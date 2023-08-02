@@ -1,0 +1,31 @@
+# Ignore venv folder (Virtual environment)
+venv/
+
+# Ignore the database file
+*.sqlite3
+
+# Ignore Python bytecode files
+__pycache__/
+*.pyc
+
+# Ignore environment-specific settings file
+settings_local.py
+
+# Ignore any sensitive credentials or secret files
+.env
+
+# Ignore log files and other generated files
+logs/
+*.log
+
+# Ignore media files (uploaded by users, if using)
+media/
+
+# Ignore static files (collected static files if using)
+static/
+
+# Ignore any IDE-specific files or folders
+.idea/
+*.iml
+*.ipr
+*.iws
