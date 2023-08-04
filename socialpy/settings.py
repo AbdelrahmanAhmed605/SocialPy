@@ -13,6 +13,10 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 from decouple import config
 
+import os
+import boto3
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -38,7 +42,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'core'
+
+    # App for django project
+    'core',
+    
+    # Third-party Apps (For Amazon S3 Bucket)
+    'storages'
 ]
 
 MIDDLEWARE = [
@@ -85,6 +94,37 @@ DATABASES = {
         'PORT': config('DB_PORT', default=''),  # Default to an empty string if not specified
     }
 }
+
+# Use a custom user model for authentication.
+# The 'core.User' refers to the custom user model defined in the 'core' app.
+AUTH_USER_MODEL = 'core.User'
+
+# Set the AWS credentials and region
+AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
+AWS_REGION_NAME = config('AWS_REGION_NAME')
+
+# Set the S3 bucket name you created earlier
+AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
+
+# Set the S3 URL format
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+
+# Set the S3 file URL access
+AWS_DEFAULT_ACL = 'public-read'
+
+# Set the S3 storage class
+AWS_S3_OBJECT_PARAMETERS = {'StorageClass': 'STANDARD_IA'}
+
+# Set the static and media file configurations
+STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+# To serve media files directly from S3
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
+
+# To serve static files directly from S3
+STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
 
 
 # Password validation

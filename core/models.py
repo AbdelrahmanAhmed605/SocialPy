@@ -14,11 +14,18 @@ class User(AbstractUser):
     def __str__(self):
         return self.username
 
+
 # Model to represent user posts
 class Post(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)  # ForeignKey user who made the post
     content = models.TextField(max_length=1000)  # Text content of the post
-    media = models.FileField(upload_to='posts/', validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg',"png", 'mp4', 'mov', 'avi', 'mkv'])], null=False, blank=False)  # Media file (image or video) for the post
+    media = models.FileField(
+        upload_to='posts/',
+        null=False,
+        blank=False,
+        validators=[
+            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi', 'mkv'])]
+    )
     visibility = models.CharField(max_length=10, choices=[('public', 'Public'), ('private', 'Private')], default='public')  # Visibility setting for the post
     hashtags = models.CharField(max_length=100, blank=True)  # Hashtags or tags associated with the post
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -34,6 +41,7 @@ class Post(models.Model):
     class Meta:
         ordering = ['-timestamp']  # Sort posts by timestamp in descending order
 
+
 # Model to represent user comments on posts
 class Comment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)  # ForeignKey User who made the comment
@@ -43,6 +51,7 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.post}"
+
 
 # Model to represent user follows (followers and following)
 class Follow(models.Model):
@@ -55,9 +64,10 @@ class Follow(models.Model):
     def __str__(self):
         return f"{self.follower.username} follows {self.following.username}"
 
+
 # Model to represent direct messages between users
 class Message(models.Model):
-    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages') # ForeignKey User that sent the message
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')  # ForeignKey User that sent the message
     receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')  # ForeignKey User that received the message
     content = models.TextField(max_length=1000)  # Text content of the message
     timestamp = models.DateTimeField(auto_now_add=True)
