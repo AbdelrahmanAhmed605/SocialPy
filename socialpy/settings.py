@@ -47,7 +47,10 @@ INSTALLED_APPS = [
     'core',
     
     # Third-party Apps (For Amazon S3 Bucket)
-    'storages'
+    'storages',
+    
+    # Django REST framework
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
