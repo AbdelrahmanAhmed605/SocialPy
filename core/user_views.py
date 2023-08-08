@@ -57,27 +57,21 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]  # Allow only authenticated users to make changes to their account
 
-    # Overriding update method to perform custom logic
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', True)  # partial update to allow updates of some fields, not all of them
-        instance = self.get_object()  # Uses the primary number passed in the route to obtain the specific instance
-
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
+    # Overriding perform_update method to perform custom logic
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        new_username = serializer.validated_data.get('username')
+        new_email = serializer.validated_data.get('email')
 
         # Check for duplicate username and email before updating the user
         # .get() used to return None instead of a KeyError if username/email are not present (since it is partial data)
-        new_username = serializer.validated_data.get('username')
-        new_email = serializer.validated_data.get('email')
         if new_username and User.objects.exclude(pk=instance.pk).filter(username=new_username).exists():
             raise ValidationError("Username already exists.")
         if new_email and User.objects.exclude(pk=instance.pk).filter(email=new_email).exists():
             raise ValidationError("Email already exists.")
 
-        # Save the new updated data
-        self.perform_update(serializer)
-
-        return Response(serializer.data)
+        # Perform the update
+        serializer.save(partial=True)
 
 
 # Endpoint: /api/login/
@@ -150,9 +144,6 @@ def user_profile(request, username):
                 'bio': user.bio,
                 'contact_information': user.contact_information,
                 'is_following': False,
-                'num_followers': user.followers.count(),
-                'num_following': user.following.count(),
-                'num_posts': user.posts.count(),
                 'posts': None,  # Indicate that the user has no access to posts
             }
             return Response(response_data, status=status.HTTP_200_OK)
@@ -161,11 +152,6 @@ def user_profile(request, username):
         users_posts = Post.objects.filter(user=user)
         serializer = PostSerializer(users_posts, many=True)
 
-        # Count followers, following, and posts
-        num_followers = user.followers.count()
-        num_following = user.following.count()
-        num_posts = users_posts.count()
-
         # Add the follow status and additional information to the response data
         response_data = {
             'username': user.username,
@@ -173,9 +159,6 @@ def user_profile(request, username):
             'bio': user.bio,
             'contact_information': user.contact_information,
             'is_following': is_following,
-            'num_followers': num_followers,
-            'num_following': num_following,
-            'num_posts': num_posts,
             'posts': serializer.data,
         }
 

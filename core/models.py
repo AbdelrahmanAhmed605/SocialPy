@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import FileExtensionValidator
 
+
 # Define a custom User model that extends AbstractUser
 class User(AbstractUser):
     # Additional fields for user profiles
@@ -17,7 +18,7 @@ class User(AbstractUser):
 
 # Model to represent user posts
 class Post(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)  # ForeignKey user who made the post
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_posts')  # ForeignKey user who made the post
     content = models.TextField(max_length=1000)  # Text content of the post
     media = models.FileField(
         upload_to='posts/',
@@ -28,24 +29,21 @@ class Post(models.Model):
     )
     visibility = models.CharField(max_length=10, choices=[('public', 'Public'), ('private', 'Private')], default='public')  # Visibility setting for the post
     hashtags = models.CharField(max_length=100, blank=True)  # Hashtags or tags associated with the post
-    timestamp = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     likes = models.ManyToManyField(User, related_name='liked_posts')
 
     def __str__(self):
-        return f"{self.user.username} - {self.timestamp}"
-
-    # Method to count the number of likes for a post
-    def count_likes(self):
-        return self.likes.count()
+        return f"{self.user.username} - {self.created_at}"
 
     class Meta:
-        ordering = ['-timestamp']  # Sort posts by timestamp in descending order
+        ordering = ['-created_at']  # Sort posts by created_at in descending order
 
 
 # Model to represent user comments on posts
 class Comment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)  # ForeignKey User who made the comment
-    post = models.ForeignKey(Post, on_delete=models.CASCADE)  # ForeignKey Post of the post being commented on
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='post_comments')  # ForeignKey Post of the post being commented on
     content = models.TextField(max_length=500)  # Text content of the comment
     timestamp = models.DateTimeField(auto_now_add=True)
 
