@@ -16,6 +16,14 @@ class User(AbstractUser):
         return self.username
 
 
+# Model to represent hashtags on posts
+class Hashtag(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
 # Model to represent user posts
 class Post(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_posts')  # ForeignKey user who made the post
@@ -28,7 +36,7 @@ class Post(models.Model):
             FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi', 'mkv'])]
     )
     visibility = models.CharField(max_length=10, choices=[('public', 'Public'), ('private', 'Private')], default='public')  # Visibility setting for the post
-    hashtags = models.CharField(max_length=100, blank=True)  # Hashtags or tags associated with the post
+    hashtags = models.ManyToManyField(Hashtag, blank=True)  # Hashtags or tags associated with the post
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     likes = models.ManyToManyField(User, related_name='liked_posts')
