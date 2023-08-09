@@ -106,8 +106,14 @@ def search_hashtags(request, post_id):
 # API view to allow users to have an explore page (see posts created by public accounts)
 @api_view(['GET'])
 def explore_page(request):
-    # Search for posts with 'public' visibility
-    explore_posts = Post.objects.filter(visibility='public')
+    # If the user is authenticated, then show posts of public users they do not follow
+    if request.user.is_authenticated:
+        following_users = request.user.following.all()
+        explore_posts = Post.objects.filter(visibility='public').exclude(user__in=following_users)
+
+    else:
+        # If the user is not authenticated, then show posts of public users
+        explore_posts = Post.objects.filter(visibility='public')
 
     serializer = PostSerializer(explore_posts, many=True)
 
