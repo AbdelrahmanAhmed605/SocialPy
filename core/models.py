@@ -53,7 +53,8 @@ class Comment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)  # ForeignKey User who made the comment
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='post_comments')  # ForeignKey Post of the post being commented on
     content = models.TextField(max_length=500)  # Text content of the comment
-    timestamp = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.post}"

@@ -1,8 +1,7 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework import generics, permissions, status
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework import generics, status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
-from django.utils import timezone
 from rest_framework.response import Response
 
 from .models import Post, Comment
@@ -40,8 +39,8 @@ class PostDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
         if post.user != self.request.user:
             raise PermissionDenied("You don't have permission to update this post.")
 
-        # Save the updated post and change the updated_at field to reflect the latest modification time
-        serializer.save(updated_at=timezone.now(), partial=True)
+        # Save the updated post
+        serializer.save(partial=True)
 
     def perform_destroy(self, instance):
         if instance.user != self.request.user:
