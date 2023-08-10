@@ -107,9 +107,19 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class FollowSerializer(serializers.ModelSerializer):
+    # Custom field to indicate whether the requesting user follows a user
+    is_followed_by_requesting_user = serializers.SerializerMethodField()
+
+    # Check if the requesting user is following the user
+    def get_is_followed_by_requesting_user(self, user):
+        if 'request' in self.context:
+            requesting_user = self.context['request'].user
+            return requesting_user.following.filter(id=user.id).exists()
+        return None
+
     class Meta:
-        model = Follow
-        fields = '__all__'
+        model = User
+        fields = ['username', 'profile_picture', 'is_followed_by_requesting_user']
 
 
 class MessageSerializer(serializers.ModelSerializer):

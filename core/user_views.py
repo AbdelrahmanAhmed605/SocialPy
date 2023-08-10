@@ -134,9 +134,11 @@ def user_profile(request, user_id):
         num_following = user.num_following()
         num_posts = user.num_posts()
 
-        # Check if the requesting user is following the viewed user
+        # Check if there is a requesting user and check if they are following the viewed user
         if request.user.is_authenticated:
-            is_following = user.followers.filter(id=request.user.id).exists()
+            is_following = request.user.following.filter(id=user_id).exists()
+
+        # The else means that there is no authenticated requesting user (not logged in or no account)
         else:
             is_following = False
 
@@ -152,12 +154,16 @@ def user_profile(request, user_id):
                 'bio': user.bio,
                 'contact_information': user.contact_information,
                 'is_following': False,
+                'can_view': False,  # Indicate we cannot view the user's profile
                 'posts': None,  # Indicate that the user has no access to posts
                 'num_followers': num_followers,
                 'num_following': num_following,
                 'num_posts': num_posts,
             }
             return Response(response_data, status=status.HTTP_200_OK)
+
+        # If we are in this section below, it means the above elif statement didn't run, meaning we are
+        # attempting to view a user that is public or private, but we follow them
 
         # Get user's posts for users the requesting user has access to
         users_posts = Post.objects.filter(user=user)
@@ -170,6 +176,7 @@ def user_profile(request, user_id):
             'bio': user.bio,
             'contact_information': user.contact_information,
             'is_following': is_following,
+            'can_view': True,  # indicate we can view the user's profile
             'posts': serializer.data,
             'num_followers': num_followers,
             'num_following': num_following,

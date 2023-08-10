@@ -54,8 +54,9 @@ def unfollow_user(request, user_id):
 
 # Endpoint: /api/follower_list/{user_id}
 # API view to view a user's follower list
+# Note: we don't have to check if requesting user has access to this list since the user_profile
+#       API view in the user_views already checks for this access
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
 def get_followers(request, user_id):
     try:
         user = User.objects.get(id=user_id)
@@ -66,7 +67,7 @@ def get_followers(request, user_id):
     followers = Follow.objects.filter(following=user).select_related('follower')
     follower_users = [follow.follower for follow in followers]
 
-    serializer = FollowSerializer(follower_users, many=True)
+    serializer = FollowSerializer(follower_users, many=True, context={'request': request})
 
     return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -74,7 +75,6 @@ def get_followers(request, user_id):
 # Endpoint: /api/following_list/{user_id}
 # API view to view a user's following list
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
 def get_following(request, user_id):
     try:
         user = User.objects.get(id=user_id)
@@ -85,6 +85,6 @@ def get_following(request, user_id):
     followings = Follow.objects.filter(follower=user).select_related('following')
     following_users = [following.following for following in followings]
 
-    serializer = FollowSerializer(following_users, many=True)
+    serializer = FollowSerializer(following_users, many=True, context={'request': request})
 
     return Response(serializer.data, status=status.HTTP_200_OK)
