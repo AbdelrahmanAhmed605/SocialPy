@@ -34,6 +34,14 @@ class PostDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
 
+    # Override the serializer context to include the request object
+    # This is done due to custom logic in the PostSerializer that requires the request data (get_liked_by_user function)
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+    # Custom logic for updating a post
     def perform_update(self, serializer):
         post = serializer.instance  # Get the existing post instance
         if post.user != self.request.user:
@@ -42,6 +50,7 @@ class PostDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
         # Save the updated post
         serializer.save(partial=True)
 
+    # Custom logic for deleting a post
     def perform_destroy(self, instance):
         if instance.user != self.request.user:
             raise PermissionDenied("You don't have permission to delete this post.")
@@ -109,11 +118,11 @@ def explore_page(request):
     if request.user.is_authenticated:
         following_users = request.user.following.all()
         explore_posts = Post.objects.filter(visibility='public').exclude(user__in=following_users)
+        serializer = PostSerializer(explore_posts, many=True, context={'request': request})
 
     else:
         # If the user is not authenticated, then show posts of public users
         explore_posts = Post.objects.filter(visibility='public')
-
-    serializer = PostSerializer(explore_posts, many=True)
+        serializer = PostSerializer(explore_posts, many=True)
 
     return Response(serializer.data, status=status.HTTP_200_OK)

@@ -115,18 +115,24 @@ def user_feed(request):
     following_users = request.user.following.all()  # Obtains all the users the requesting user is following
     feed_posts = Post.objects.filter(user__in=following_users)  # fetches all posts from the users in following_users
 
-    serializer = PostSerializer(feed_posts, many=True)
+    # The context is used to pass the request to the PostSerializer to perform custom logic
+    serializer = PostSerializer(feed_posts, many=True, context={'request': request})
 
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-# Endpoint: /api/user/profile/{username}/
-# API view to get all posts created by a specific user
+# Endpoint: /api/user/profile/{user_id}/
+# API view to get a users profile and its information
 @api_view(['GET'])
-def user_profile(request, username):
+def user_profile(request, user_id):
     try:
         # Get user by username
-        user = User.objects.get(username=username)
+        user = User.objects.get(id=user_id)
+
+        # Use functions in the UserSerializer to get the users number of posts, followers, and following
+        num_followers = user.num_followers()
+        num_following = user.num_following()
+        num_posts = user.num_posts()
 
         # Check if the requesting user is following the viewed user
         if request.user.is_authenticated:
@@ -137,8 +143,9 @@ def user_profile(request, username):
         # Check if the requesting user is attempting to view their own account
         if request.user == user:
             is_following = None  # Indicate that the user is viewing their own account
+
+        # Check if the requesting user is attempting to view a private user that they don't follow
         elif user.profile_privacy == 'private' and not is_following:
-            # Check if the requesting user is attempting to view a private user that they don't follow
             response_data = {
                 'username': user.username,
                 'profile_picture': user.profile_picture.url if user.profile_picture else None,
@@ -146,10 +153,13 @@ def user_profile(request, username):
                 'contact_information': user.contact_information,
                 'is_following': False,
                 'posts': None,  # Indicate that the user has no access to posts
+                'num_followers': num_followers,
+                'num_following': num_following,
+                'num_posts': num_posts,
             }
             return Response(response_data, status=status.HTTP_200_OK)
 
-        # Get user's posts
+        # Get user's posts for users the requesting user has access to
         users_posts = Post.objects.filter(user=user)
         serializer = PostSerializer(users_posts, many=True)
 
@@ -161,6 +171,9 @@ def user_profile(request, username):
             'contact_information': user.contact_information,
             'is_following': is_following,
             'posts': serializer.data,
+            'num_followers': num_followers,
+            'num_following': num_following,
+            'num_posts': num_posts,
         }
 
         return Response(response_data, status=status.HTTP_200_OK)

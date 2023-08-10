@@ -29,7 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = '__all__'
+        fields = ['username', 'email', 'first_name', 'last_name', 'profile_picture', 'bio', 'contact_information', 'profile_privacy', 'num_followers', 'num_following', 'num_posts']
 
 
 class HashtagSerializer(serializers.ModelSerializer):
@@ -41,6 +41,9 @@ class HashtagSerializer(serializers.ModelSerializer):
 class PostSerializer(serializers.ModelSerializer):
     # Define hashtags field as a list of strings, each with a max length of 50 characters
     hashtags = serializers.ListField(child=serializers.CharField(max_length=50))
+
+    # Custom field to indicate if the requesting user has liked the post
+    liked_by_user = serializers.SerializerMethodField()
 
     # Create new fields containing the number of likes and comments for a post
     num_likes = serializers.SerializerMethodField()
@@ -65,15 +68,42 @@ class PostSerializer(serializers.ModelSerializer):
             hashtags.append(hashtag)  # Add the retrieved or newly created hashtag to the list
         return hashtags  # Return the list of hashtag objects
 
+    # Function that checks if a requesting user liked the post that is being retrieved
+    # This will be used on the front end to provide indication to users if they liked a post or not
+    def get_liked_by_user(self, post):
+        if 'request' in self.context:
+            user = self.context['request'].user
+            return post.likes.filter(id=user.id).exists()
+        return None
+
     class Meta:
         model = Post
-        fields = ['user', 'content', 'media', 'visibility', 'hashtags', 'created_at', 'updated_at', 'likes']
+        fields = ['user', 'content', 'media', 'visibility', 'hashtags', 'created_at', 'updated_at', 'likes', 'num_likes', 'num_comments', 'liked_by_user']
 
 
 class CommentSerializer(serializers.ModelSerializer):
+    # Custom field to indicate whether the requesting user can edit the comment
+    can_edit = serializers.SerializerMethodField()
+    # Custom field to indicate whether the requesting user can delete the comment
+    can_delete = serializers.SerializerMethodField()
+
+    def get_can_delete(self, comment):
+        if 'request' in self.context:
+            # Check if the requesting user is the owner of the comment or the owner of the post
+            user = self.context['request'].user
+            return comment.user == user or comment.post.user == user
+        return None
+
+    def get_can_edit(self, comment):
+        if 'request' in self.context:
+            # Check if the requesting user is the owner of the comment
+            user = self.context['request'].user
+            return comment.user == user
+        return None
+
     class Meta:
         model = Comment
-        fields = '__all__'
+        fields = ['user', 'post', 'content', 'created_at', 'updated_at', 'can_edit', 'can_delete']
 
 
 class FollowSerializer(serializers.ModelSerializer):

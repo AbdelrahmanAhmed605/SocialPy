@@ -87,6 +87,6 @@ def get_post_comments(request, post_id):
         return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
     comments = post.post_comments.all()  # Access comments using the related_name
-    serializer = CommentSerializer(comments, many=True)
+    serializer = CommentSerializer(comments, many=True, context={'request': request})
 
     return Response(serializer.data, status=status.HTTP_200_OK)
