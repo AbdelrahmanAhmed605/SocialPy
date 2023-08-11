@@ -32,7 +32,7 @@ def send_message(request, receiver_id):
         return Response({"error": "Cannot send message to yourself"}, status=status.HTTP_400_BAD_REQUEST)
 
     # Creates the message
-    message = Message(sender=sender, receiver=receiver, content=content)
+    message = Message(sender=sender, receiver=receiver, content=content, is_delivered=True)
     message.save()
 
     serializer = MessageSerializer(message)
@@ -59,21 +59,25 @@ def delete_message(request, message_id):
     return Response({"message": "Message deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 
-# Endpoint: /api/messages/conversation/{receiver_id}
+# Endpoint: /api/messages/conversation/{user_id}
 # API view to get message conversation between 2 users
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def get_conversation(request, receiver_id):
+def get_conversation(request, user_id):
+    # Obtain the user the request user has the conversation with
     try:
-        receiver = User.objects.get(id=receiver_id)
+        user = User.objects.get(id=user_id)
     except User.DoesNotExist:
         return Response({"error": "Receiver not found"}, status=status.HTTP_404_NOT_FOUND)
 
     # Get all messages between the requesting user and the receiver
     # The Q object helps build complex queries using logical operators to filter database records based on multiple conditions
     messages = Message.objects.filter(
-        Q(sender=request.user, receiver=receiver) | Q(sender=receiver, receiver=request.user)
+        Q(sender=request.user, receiver=user) | Q(sender=user, receiver=request.user)
     ).order_by('-timestamp')
+
+    # If the user accessing the conversation is the receiver, then set the unread messages to be seen
+    messages.filter(receiver=request.user, is_read=False).update(is_read=True)
 
     serializer = MessageSerializer(messages, many=True)
 
