@@ -102,8 +102,8 @@ def unlike_post(request, post_id):
 def search_hashtags(request, post_id):
     hashtag = request.query_params.get('q', '')  # Get the search query from query parameters
 
-    # Search for users based on username or email
-    matched_posts = Post.objects.filter(hashtags__name=hashtag)
+    # Search for posts with the specified hashtag and a public visibility
+    matched_posts = Post.objects.filter(hashtags__name=hashtag, visibility='public')
 
     serializer = PostSerializer(matched_posts, many=True)
 

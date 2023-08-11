@@ -20,13 +20,46 @@ def follow_user(request, user_id):
     follower_user = request.user
 
     # Check if user already follows this user
-    if Follow.objects.filter(follower=follower_user, following=following_user).exists():
+    if Follow.objects.filter(follower=follower_user, following=following_user, follow_status='accepted').exists():
         return Response({"error": "You are already following this user"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Create the follow relationship
-    Follow.objects.create(follower=request.user, following=following_user)
+    # Check if the following_user is private
+    if following_user.profile_privacy == 'private':
+        # Create the follow request with a 'pending' status
+        Follow.objects.create(follower=follower_user, following=following_user, follow_status='pending')
+        return Response({"message": "Follow request sent"}, status=status.HTTP_201_CREATED)
+    else:
+        # Create the follow relationship immediately for public users
+        Follow.objects.create(follower=follower_user, following=following_user, follow_status='accepted')
+        return Response({"message": "You are now following this user"}, status=status.HTTP_201_CREATED)
 
-    return Response({"message": "You are now following this user"}, status=status.HTTP_201_CREATED)
+
+# Endpoint: /api/accept/follow/user/{user_id}
+# API view to allow a private user to accept a follow request
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def accept_follow_request(request, follower_id):
+    try:
+        follower_user = User.objects.get(id=follower_id)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        follow = Follow.objects.get(follower=follower_user, following=request.user, follow_status='pending')
+    except Follow.DoesNotExist:
+        return Response({"error": "No pending follow request found from this user"}, status=status.HTTP_404_NOT_FOUND)
+
+    action = request.data.get('action')  # 'accept' or 'decline'
+
+    if action == 'accept':
+        follow.follow_status = 'accepted'
+        follow.save()
+        return Response({"message": "Follow request accepted"}, status=status.HTTP_200_OK)
+    elif action == 'decline':
+        follow.delete()
+        return Response({"message": "Follow request declined"}, status=status.HTTP_200_OK)
+    else:
+        return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Endpoint: /api/unfollow/user/{user_id}

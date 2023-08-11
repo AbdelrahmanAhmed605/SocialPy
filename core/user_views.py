@@ -112,7 +112,7 @@ def user_logout(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def user_feed(request):
-    following_users = request.user.following.all()  # Obtains all the users the requesting user is following
+    following_users = request.user.following.filter(follow_status='accepted')  # Obtains all the users the requesting user is following
     feed_posts = Post.objects.filter(user__in=following_users)  # fetches all posts from the users in following_users
 
     # The context is used to pass the request to the PostSerializer to perform custom logic
@@ -134,26 +134,29 @@ def user_profile(request, user_id):
         num_following = user.num_following()
         num_posts = user.num_posts()
 
-        # Check if there is a requesting user and check if they are following the viewed user
+        # Check if there is a requesting user and get their follow status to the viewed user
         if request.user.is_authenticated:
-            is_following = request.user.following.filter(id=user_id).exists()
-
+            follow_instance = request.user.following.filter(id=user_id).first()
+            if follow_instance:
+                follow_status = follow_instance.follow_status
+            else:
+                follow_status = 'False'
         # The else means that there is no authenticated requesting user (not logged in or no account)
         else:
-            is_following = False
+            follow_status = False
 
         # Check if the requesting user is attempting to view their own account
         if request.user == user:
-            is_following = None  # Indicate that the user is viewing their own account
+            follow_status = None  # Indicate that the user is viewing their own account
 
         # Check if the requesting user is attempting to view a private user that they don't follow
-        elif user.profile_privacy == 'private' and not is_following:
+        elif user.profile_privacy == 'private' and (follow_status is False or follow_status == 'pending'):
             response_data = {
                 'username': user.username,
                 'profile_picture': user.profile_picture.url if user.profile_picture else None,
                 'bio': user.bio,
                 'contact_information': user.contact_information,
-                'is_following': False,
+                'follow_status': follow_status,
                 'can_view': False,  # Indicate we cannot view the user's profile
                 'posts': None,  # Indicate that the user has no access to posts
                 'num_followers': num_followers,
@@ -175,7 +178,7 @@ def user_profile(request, user_id):
             'profile_picture': user.profile_picture.url if user.profile_picture else None,
             'bio': user.bio,
             'contact_information': user.contact_information,
-            'is_following': is_following,
+            'follow_status': follow_status,
             'can_view': True,  # indicate we can view the user's profile
             'posts': serializer.data,
             'num_followers': num_followers,

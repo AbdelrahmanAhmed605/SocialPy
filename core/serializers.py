@@ -15,12 +15,12 @@ class UserSerializer(serializers.ModelSerializer):
     # Function to count the number of followers for a specific user
     # followers is a related_name field in the Follow model for the User field foreign key
     def get_num_followers(self, obj):
-        return obj.followers.count()
+        return obj.follower.filter(follow_status='accepted').count()
 
     # Function to count the number of following for a specific user
     # following is a related_name field in the Follow model for the User field foreign key
     def get_num_following(self, obj):
-        return obj.following.count()
+        return obj.following.filter(follow_status='accepted').count()
 
     # Function to count the number of posts for a specific user
     # user_posts is a related_name field in the Post model for the User field foreign key
@@ -73,8 +73,9 @@ class PostSerializer(serializers.ModelSerializer):
     def get_liked_by_user(self, post):
         if 'request' in self.context:
             user = self.context['request'].user
-            return post.likes.filter(id=user.id).exists()
-        return None
+            if user.is_authenticated:
+                return post.likes.filter(id=user.id).exists()
+        return False
 
     class Meta:
         model = Post
@@ -91,15 +92,17 @@ class CommentSerializer(serializers.ModelSerializer):
         if 'request' in self.context:
             # Check if the requesting user is the owner of the comment or the owner of the post
             user = self.context['request'].user
-            return comment.user == user or comment.post.user == user
-        return None
+            if user.is_authenticated:
+                return comment.user == user or comment.post.user == user
+        return False
 
     def get_can_edit(self, comment):
         if 'request' in self.context:
             # Check if the requesting user is the owner of the comment
             user = self.context['request'].user
-            return comment.user == user
-        return None
+            if user.is_authenticated:
+                return comment.user == user
+        return False
 
     class Meta:
         model = Comment
@@ -107,15 +110,20 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class FollowSerializer(serializers.ModelSerializer):
-    # Custom field to indicate whether the requesting user follows a user
-    is_followed_by_requesting_user = serializers.SerializerMethodField()
+    # Custom field to indicate the follow status of the requesting user to the viewed users
+    requesting_user_follow_status = serializers.SerializerMethodField()
 
-    # Check if the requesting user is following the user
-    def get_is_followed_by_requesting_user(self, user):
+    # Function to get the follow status of the requesting user to the viewed user
+    def get_requesting_user_follow_status(self, user):
         if 'request' in self.context:
             requesting_user = self.context['request'].user
-            return requesting_user.following.filter(id=user.id).exists()
-        return None
+            # Check if there is an authenticated requesting user
+            if requesting_user.is_authenticated:
+                follow_instance = requesting_user.following.filter(id=user.id).first()
+                if follow_instance:
+                    return follow_instance.follow_status # return the follow status
+        # If the requesting user is not authenticated, or we do not follow the user
+        return False
 
     class Meta:
         model = User

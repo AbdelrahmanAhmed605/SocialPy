@@ -62,8 +62,14 @@ class Comment(models.Model):
 
 # Model to represent user follows (followers and following)
 class Follow(models.Model):
+    FOLLOW_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+    ]
+
     follower = models.ForeignKey(User, on_delete=models.CASCADE, related_name='following')  # ForeignKey User that is following another User
     following = models.ForeignKey(User, on_delete=models.CASCADE, related_name='follower')  # ForeignKey User that is being followed by another User
+    follow_status = models.CharField(max_length=10, choices=FOLLOW_STATUS_CHOICES, default='pending')
 
     class Meta:
         unique_together = ('follower', 'following')  # Ensure unique follower-following pairs
