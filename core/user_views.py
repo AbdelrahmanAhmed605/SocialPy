@@ -219,12 +219,16 @@ def change_profile_privacy(request):
 
 
 # Endpoint: /api/search/users/
+# API view to search for users
 @api_view(['GET'])
 def search_users(request):
-    search_query = request.query_params.get('q', '')  # Get the search query from query parameters
+    username = request.query_params.get('username')  # Get the search query from query parameters
+
+    if not username:
+        return Response({"error": "Please provide a username query parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
     # Search for users based on username or email
-    matched_users = User.objects.filter(username__icontains=search_query)
+    matched_users = User.objects.filter(username__icontains=username)
 
     serializer = UserSerializer(matched_users, many=True)
 

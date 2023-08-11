@@ -99,8 +99,11 @@ def unlike_post(request, post_id):
 # Endpoint: /api/hashtag/posts
 # API view to allow users to search for posts by a specific hashtag
 @api_view(['GET'])
-def search_hashtags(request, post_id):
-    hashtag = request.query_params.get('q', '')  # Get the search query from query parameters
+def search_hashtags(request):
+    hashtag = request.query_params.get('hashtag')  # Get the search query from query parameters
+
+    if not hashtag:
+        return Response({"error": "Please provide a hashtag query parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
     # Search for posts with the specified hashtag and a public visibility
     matched_posts = Post.objects.filter(hashtags__name=hashtag, visibility='public')
