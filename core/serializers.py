@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Hashtag, Post, Comment, Follow, Message
+from .models import User, Hashtag, Post, Comment, Follow, Message, Notification
 
 
 # Serializers to convert Django model instances into Python data types and vice versa (deserialization)
@@ -121,7 +121,7 @@ class FollowSerializer(serializers.ModelSerializer):
             if requesting_user.is_authenticated:
                 follow_instance = requesting_user.following.filter(id=user.id).first()
                 if follow_instance:
-                    return follow_instance.follow_status # return the follow status
+                    return follow_instance.follow_status  # return the follow status
         # If the requesting user is not authenticated, or we do not follow the user
         return False
 
@@ -133,4 +133,10 @@ class FollowSerializer(serializers.ModelSerializer):
 class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
+        fields = '__all__'
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
         fields = '__all__'

@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
-from .models import Post, Comment
+from .models import Post, Comment, Notification
 from .serializers import CommentSerializer
 
 
@@ -26,37 +26,16 @@ def create_comment(request, post_id):
     comment = Comment.objects.create(user=request.user, post=post, content=content)
     serializer = CommentSerializer(comment)
 
+    # Create a notification for the post author
+    Notification.objects.create(
+        recipient=post.user,  # Author of the post
+        sender=request.user,
+        notification_type='new_comment',
+        notification_post=post,
+        notification_comment=comment
+    )
+
     return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
-# Endpoint: /api/comment/post/{post_id}
-# API view to update a comment on a specific post
-@api_view(['PATCH'])
-@permission_classes([IsAuthenticated])
-def update_comment(request, post_id):
-    try:
-        post = Post.objects.get(id=post_id)
-    except Post.DoesNotExist:
-        return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
-
-    content = request.data.get('content')
-
-    if not content:
-        return Response({"error": "Comment content is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-    try:
-        # Retrieve the comment associated with the requesting user and the specified post
-        comment = Comment.objects.get(user=request.user, post=post)
-    except Comment.DoesNotExist:
-        return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
-
-    # Update the comment's content and save it
-    comment.content = content
-    comment.save()
-
-    serializer = CommentSerializer(comment)
-
-    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 # Endpoint: /api/comment/{comment_id}/

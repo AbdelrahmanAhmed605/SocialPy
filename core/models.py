@@ -89,3 +89,24 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender.username} to {self.receiver.username} - {self.timestamp}"
+
+
+# Model to represent the notifications a user will receive
+class Notification(models.Model):
+    TYPE_CHOICES = (
+        ('follow_request', 'Follow Request'),
+        ('new_follower', 'New Follower'),
+        ('new_comment', 'New Comment'),
+        ('new_like', 'New Like'),
+    )
+
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications', null=True, blank=True)
+    notification_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    notification_post = models.ForeignKey(Post, on_delete=models.CASCADE, null=True, blank=True)
+    notification_comment = models.ForeignKey(Comment, on_delete=models.CASCADE, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f'{self.notification_type} notification for {self.recipient}'

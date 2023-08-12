@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
-from .models import Post, Comment
+from .models import Post, Comment, Notification
 from .serializers import PostSerializer
 
 
@@ -76,6 +76,15 @@ def like_post(request, post_id):
         return Response({"error": "You already liked this post"}, status=status.HTTP_400_BAD_REQUEST)
 
     post.likes.add(request.user)
+
+    # Create a notification for the liked post
+    Notification.objects.create(
+        recipient=post.user,
+        sender=request.user,
+        notification_type='new_like',
+        notification_post=post
+    )
+
     return Response({"message": "Post liked successfully"}, status=status.HTTP_200_OK)
 
 
@@ -92,7 +101,17 @@ def unlike_post(request, post_id):
     if request.user not in post.likes.all():
         return Response({"error": "You haven't liked this post"}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Remove the like
     post.likes.remove(request.user)
+
+    # Delete the corresponding 'new_like' notification
+    Notification.objects.filter(
+        recipient=post.user,
+        sender=request.user,
+        notification_type='new_like',
+        notification_post=post
+    ).delete()
+
     return Response({"message": "Post unliked successfully"}, status=status.HTTP_200_OK)
 
 

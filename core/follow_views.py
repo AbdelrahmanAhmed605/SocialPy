@@ -1,9 +1,11 @@
+from django.db import transaction, DatabaseError, IntegrityError
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import User, Follow
+from .models import User, Follow, Notification
 from .serializers import FollowSerializer
 
 
@@ -12,6 +14,7 @@ from .serializers import FollowSerializer
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def follow_user(request, user_id):
+    # Look for the user we are attempting to follow
     try:
         following_user = User.objects.get(id=user_id)
     except User.DoesNotExist:
@@ -27,10 +30,26 @@ def follow_user(request, user_id):
     if following_user.profile_privacy == 'private':
         # Create the follow request with a 'pending' status
         Follow.objects.create(follower=follower_user, following=following_user, follow_status='pending')
+
+        # Create a follow_request notification
+        Notification.objects.create(
+            recipient=following_user,
+            sender=follower_user,
+            notification_type='follow_request'
+        )
+
         return Response({"message": "Follow request sent"}, status=status.HTTP_201_CREATED)
     else:
         # Create the follow relationship immediately for public users
         Follow.objects.create(follower=follower_user, following=following_user, follow_status='accepted')
+
+        # Create a new_follower notification
+        Notification.objects.create(
+            recipient=following_user,
+            sender=follower_user,
+            notification_type='new_follower'
+        )
+
         return Response({"message": "You are now following this user"}, status=status.HTTP_201_CREATED)
 
 
@@ -79,8 +98,17 @@ def unfollow_user(request, user_id):
     if not follow:
         return Response({"error": "You are not following this user"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Remove the follow relationship
-    follow.delete()
+    try:
+        # Use a transaction to handle both unfollowing and deleting the associated notification
+        with transaction.atomic():
+            # Remove the follow relationship
+            follow.delete()
+
+            # Delete the associated notification
+            Notification.objects.filter(sender=follower_user, recipient=following_user).delete()
+    except (DatabaseError, IntegrityError):
+        return Response({"error": "An error occurred while unfollowing the user"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response({"message": "You have unfollowed this user"}, status=status.HTTP_200_OK)
 
