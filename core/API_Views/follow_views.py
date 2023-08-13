@@ -5,8 +5,8 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import User, Follow, Notification
-from .serializers import FollowSerializer
+from core.models import User, Follow, Notification
+from core.serializers import FollowSerializer
 
 
 # Endpoint: /api/follow/user/{user_id}

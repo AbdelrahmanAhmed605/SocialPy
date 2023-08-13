@@ -5,8 +5,11 @@ from rest_framework import status
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 
-from .models import Message, User
-from .serializers import MessageSerializer, UserSerializer
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
+from core.models import Message, User
+from core.serializers import MessageSerializer, UserSerializer
 
 
 # Endpoint: api/messages/send/{receiver_id}
@@ -34,6 +37,19 @@ def send_message(request, receiver_id):
     # Creates the message
     message = Message(sender=sender, receiver=receiver, content=content, is_delivered=True)
     message.save()
+
+    room_name = f"user_{receiver_id}"
+    room_group_name = f"group_{room_name}"
+
+    # Notify WebSocket group about the new message
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        room_group_name,
+        {
+            "type": "chat.message",
+            "message": MessageSerializer(message).data
+        }
+    )
 
     serializer = MessageSerializer(message)
 

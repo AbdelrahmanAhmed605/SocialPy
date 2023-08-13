@@ -4,8 +4,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
-from .models import Post, Comment, Notification
-from .serializers import CommentSerializer
+from core.models import Post, Comment, Notification
+from core.serializers import CommentSerializer
 
 
 # Endpoint: /api/comment/post/{post_id}

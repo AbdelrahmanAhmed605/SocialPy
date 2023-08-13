@@ -5,8 +5,8 @@ from rest_framework.response import Response
 from rest_framework import status, generics
 from rest_framework.authtoken.models import Token
 
-from .models import User, Post
-from .serializers import UserSerializer, PostSerializer
+from core.models import User, Post
+from core.serializers import UserSerializer, PostSerializer
 
 
 # Endpoint: List Users: GET /api/users/

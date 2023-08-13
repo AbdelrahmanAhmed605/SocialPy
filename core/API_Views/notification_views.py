@@ -3,8 +3,8 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Notification
-from .serializers import NotificationSerializer
+from core.models import Notification
+from core.serializers import NotificationSerializer
 
 
 # Endpoint: /api/notifications
