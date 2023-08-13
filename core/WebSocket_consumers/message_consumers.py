@@ -35,7 +35,7 @@ class MessageConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_send(
             self.room_group_name,
             {
-                "type": "chat.message",
+                "type": "message",
                 "content": content
             }
         )
@@ -45,5 +45,15 @@ class MessageConsumer(AsyncWebsocketConsumer):
         content = event["content"]
 
         await self.send(text_data=json.dumps({
+            "type": "message",
             "content": content
+        }))
+
+    # Send a WebSocket message to the client indicating that a message should be removed
+    async def remove_message(self, event):
+        unique_identifier = event["unique_identifier"]
+
+        await self.send(text_data=json.dumps({
+            "type": "remove_message",
+            "unique_identifier": unique_identifier,
         }))

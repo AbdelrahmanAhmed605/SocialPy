@@ -46,7 +46,7 @@ def send_message(request, receiver_id):
     async_to_sync(channel_layer.group_send)(
         room_group_name,
         {
-            "type": "chat.message",
+            "type": "message",
             "content": content
         }
     )
@@ -71,7 +71,25 @@ def delete_message(request, message_id):
     if message.sender != request.user:
         raise PermissionDenied("You don't have permission to delete this message")
 
+    # Store the unique_identifier before deleting the message
+    unique_identifier = message.unique_identifier
+
+    # Determine the appropriate room_group_name based on sender and receiver IDs
+    room_group_name = f"group_{min(message.sender.id, message.receiver.id)}_{max(message.sender.id, message.receiver.id)}"
+
+    # Delete the message
     message.delete()
+
+    # Notify WebSocket consumer to remove the message from UI
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        room_group_name,
+        {
+            "type": "remove_message",
+            "unique_identifier": unique_identifier,
+        }
+    )
+
     return Response({"message": "Message deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 
