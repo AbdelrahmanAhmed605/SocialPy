@@ -7,12 +7,14 @@ class MessageConsumer(AsyncWebsocketConsumer):
 
     # Initiates a WebSocket connection for live messaging.
     async def connect(self):
-        user = self.scope["user"]
+        # Extract sender and receiver IDs from the user and URL parameter
+        sender = self.scope["user"]
+        sender_id = sender.id
+
         receiver_id = self.scope['url_route']['kwargs']['receiver_id']
 
-        # Construct unique identifier for the messaging session.
-        self.room_name = f"user_{receiver_id}"
-        self.room_group_name = f"group_{self.room_name}"
+        # Create a unique room group name using both sender and receiver IDs
+        self.room_group_name = f"group_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
 
         # Join the conversation group
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)

@@ -38,8 +38,8 @@ def send_message(request, receiver_id):
     message = Message(sender=sender, receiver=receiver, content=content, is_delivered=True)
     message.save()
 
-    room_name = f"user_{receiver_id}"
-    room_group_name = f"group_{room_name}"
+    # Create a unique room group name using both sender and receiver IDs
+    room_group_name = f"group_{min(sender.id, receiver.id)}_{max(sender.id, receiver.id)}"
 
     # Notify WebSocket group about the new message
     channel_layer = get_channel_layer()

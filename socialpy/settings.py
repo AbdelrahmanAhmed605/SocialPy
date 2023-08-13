@@ -105,7 +105,7 @@ DATABASES = {
 
 # Use a custom user model for authentication.
 # The 'core.User' refers to the custom user model defined in the 'core' app.
-AUTH_USER_MODEL = '..core.models.User'
+AUTH_USER_MODEL = 'core.User'
 
 # Set the AWS credentials and region
 AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
@@ -134,6 +134,7 @@ MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
 # To serve static files directly from S3
 STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
 
+# Configure Redis for the applications caching
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -142,6 +143,17 @@ CACHES = {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
     }
+}
+
+# Configure Redis as the channel layer for handling WebSocket connections
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            # Use the same Redis location as for caching
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
 }
 
 
