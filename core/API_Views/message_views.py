@@ -47,7 +47,7 @@ def send_message(request, receiver_id):
         room_group_name,
         {
             "type": "chat.message",
-            "message": MessageSerializer(message).data
+            "content": content
         }
     )
 
