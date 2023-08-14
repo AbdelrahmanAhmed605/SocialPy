@@ -4,6 +4,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
 from core.models import Post, Comment, Notification
 from core.serializers import CommentSerializer
 
@@ -26,13 +29,26 @@ def create_comment(request, post_id):
     comment = Comment.objects.create(user=request.user, post=post, content=content)
     serializer = CommentSerializer(comment)
 
-    # Create a notification for the post author
-    Notification.objects.create(
+    # Create a new_comment notification for the post author
+    notification = Notification.objects.create(
         recipient=post.user,  # Author of the post
         sender=request.user,
         notification_type='new_comment',
         notification_post=post,
         notification_comment=comment
+    )
+
+    # Notify the post author via WebSocket about the new comment
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"notifications_{post.user.id}",
+        {
+            "type": "notification",
+            "unique_identifier": notification.id,
+            "message": f"{request.user.username} commented on your post",
+            "sender_profile_picture_url": request.user.profile_picture.url if request.user.profile_picture else None,
+            "post_media_url": post.media.url if post.media else None,
+        }
     )
 
     return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -53,6 +69,30 @@ def delete_comment(request, comment_id):
         raise PermissionDenied("You don't have permission to delete this comment")
 
     comment.delete()
+
+    # Fetch the associated 'new_comment' notification
+    notification = Notification.objects.filter(
+        recipient=comment.post.user,
+        sender=request.user,
+        notification_type='new_comment',
+        notification_post=comment.post
+    ).first()
+
+    # Check if the notification exists
+    if notification:
+        notification_id = notification.id  # Store the ID for WebSocket use
+        notification.delete()
+
+        # Remove the notification for the post author via WebSocket
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"notifications_{comment.post.user.id}",
+            {
+                "type": "remove_notification",
+                "unique_identifier": notification_id
+            }
+        )
+
     return Response({"message": "Comment deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 

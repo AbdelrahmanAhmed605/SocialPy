@@ -1,9 +1,13 @@
 from django.db import transaction, DatabaseError, IntegrityError
+from django.db.models import Q
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 from core.models import User, Follow, Notification
 from core.serializers import FollowSerializer
@@ -31,11 +35,23 @@ def follow_user(request, user_id):
         # Create the follow request with a 'pending' status
         Follow.objects.create(follower=follower_user, following=following_user, follow_status='pending')
 
-        # Create a follow_request notification
-        Notification.objects.create(
+        # Create a follow_request notification for the user being followed
+        notification = Notification.objects.create(
             recipient=following_user,
             sender=follower_user,
             notification_type='follow_request'
+        )
+
+        # Notify the recipient user via WebSocket about the new follow request
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"notifications_{following_user.id}",
+            {
+                "type": "notification",
+                "unique_identifier": notification.id,
+                "message": f"{follower_user.username} sent you a follow request",
+                "sender_profile_picture_url": follower_user.profile_picture.url if follower_user.profile_picture else None,
+            }
         )
 
         return Response({"message": "Follow request sent"}, status=status.HTTP_201_CREATED)
@@ -43,11 +59,23 @@ def follow_user(request, user_id):
         # Create the follow relationship immediately for public users
         Follow.objects.create(follower=follower_user, following=following_user, follow_status='accepted')
 
-        # Create a new_follower notification
-        Notification.objects.create(
+        # Create a new_follower notification for the user being followed
+        notification = Notification.objects.create(
             recipient=following_user,
             sender=follower_user,
             notification_type='new_follower'
+        )
+
+        # Notify the recipient user via WebSocket about the new follower
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"notifications_{following_user.id}",
+            {
+                "type": "notification",
+                "unique_identifier": notification.id,
+                "message": f"{follower_user.username} started following you",
+                "sender_profile_picture_url": follower_user.profile_picture.url if follower_user.profile_picture else None,
+            }
         )
 
         return Response({"message": "You are now following this user"}, status=status.HTTP_201_CREATED)
@@ -73,8 +101,29 @@ def accept_follow_request(request, follower_id):
     if action == 'accept':
         follow.follow_status = 'accepted'
         follow.save()
+
+        # Create a notification for the accepted follow request
+        notification = Notification.objects.create(
+            recipient=follower_user,
+            sender=request.user,
+            notification_type='follow_accept'
+        )
+
+        # Notify the recipient user via WebSocket
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"notifications_{follower_user.id}",
+            {
+                "type": "notification",
+                "unique_identifier": notification.id,
+                "message": f"{request.user.username} accepted your follow request",
+                "sender_profile_picture_url": request.user.profile_picture.url if request.user.profile_picture else None,
+            }
+        )
+
         return Response({"message": "Follow request accepted"}, status=status.HTTP_200_OK)
     elif action == 'decline':
+        # Delete the Follow instance if the user declined the follow request
         follow.delete()
         return Response({"message": "Follow request declined"}, status=status.HTTP_200_OK)
     else:
@@ -104,8 +153,28 @@ def unfollow_user(request, user_id):
             # Remove the follow relationship
             follow.delete()
 
-            # Delete the associated notification
-            Notification.objects.filter(sender=follower_user, recipient=following_user).delete()
+            # Fetch the associated "follow_request" or "new_follower" notification
+            notification = Notification.objects.filter(
+                Q(sender=follower_user, recipient=following_user, notification_type='follow_request') |
+                Q(sender=follower_user, recipient=following_user, notification_type='new_follower')
+            ).first()
+
+            # Check if the notification exists
+            if notification:
+                notification_id = notification.id  # Store the ID for WebSocket use
+
+                # Delete the associated notification
+                notification.delete()
+
+                # Remove the notification for the recipient user via WebSocket
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f"notifications_{following_user.id}",
+                    {
+                        "type": "remove_notification",
+                        "unique_identifier": notification_id,
+                    }
+                )
     except (DatabaseError, IntegrityError):
         return Response({"error": "An error occurred while unfollowing the user"},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)

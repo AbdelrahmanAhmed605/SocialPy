@@ -4,6 +4,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
 from core.models import Post, Comment, Notification
 from core.serializers import PostSerializer
 
@@ -77,12 +80,25 @@ def like_post(request, post_id):
 
     post.likes.add(request.user)
 
-    # Create a notification for the liked post
-    Notification.objects.create(
+    # Create a new_like notification for the post author
+    notification = Notification.objects.create(
         recipient=post.user,
         sender=request.user,
         notification_type='new_like',
         notification_post=post
+    )
+
+    # Notify the post author via WebSocket about the new like
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"notifications_{post.user.id}",
+        {
+            "type": "notification",
+            "unique_identifier": notification.id,
+            "message": f"{request.user.username} liked your post",
+            "sender_profile_picture_url": request.user.profile_picture.url if request.user.profile_picture else None,
+            "post_media_url": post.media.url if post.media else None,
+        }
     )
 
     return Response({"message": "Post liked successfully"}, status=status.HTTP_200_OK)
@@ -104,13 +120,28 @@ def unlike_post(request, post_id):
     # Remove the like
     post.likes.remove(request.user)
 
-    # Delete the corresponding 'new_like' notification
-    Notification.objects.filter(
+    # Find the corresponding 'new_like' notification
+    notification = Notification.objects.filter(
         recipient=post.user,
         sender=request.user,
         notification_type='new_like',
         notification_post=post
-    ).delete()
+    ).first()
+
+    # Check if the notification exists
+    if notification:
+        notification_id = notification.id  # Store the ID for WebSocket use
+        notification.delete()  # Delete the notification
+
+        # Remove the notification for the post author via WebSocket
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"notifications_{post.user.id}",
+            {
+                "type": "remove_notification",
+                "unique_identifier": notification_id
+            }
+        )
 
     return Response({"message": "Post unliked successfully"}, status=status.HTTP_200_OK)
 
