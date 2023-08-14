@@ -47,7 +47,13 @@ INSTALLED_APPS = [
     'core',
     
     # Third-party Apps (For Amazon S3 Bucket)
-    'storages'
+    'storages',
+    
+    # Django REST framework
+    'rest_framework',
+
+    # For WebSocket Support
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -80,6 +86,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'socialpy.wsgi.application'
 
+# Use the Channels layer as the backend for Django's ASGI interface
+ASGI_APPLICATION = 'socialpy.routing.application'
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
@@ -125,6 +133,28 @@ MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
 
 # To serve static files directly from S3
 STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
+
+# Configure Redis for the applications caching
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+
+# Configure Redis as the channel layer for handling WebSocket connections
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            # Use the same Redis location as for caching
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
 
 
 # Password validation
