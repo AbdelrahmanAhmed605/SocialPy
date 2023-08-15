@@ -1,5 +1,6 @@
-from django.db import transaction, DatabaseError, IntegrityError
+# The Q object helps build complex queries using logical operators to filter database records based on multiple conditions
 from django.db.models import Q
+from django.db import transaction, DatabaseError, IntegrityError
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework import status
@@ -182,7 +183,7 @@ def unfollow_user(request, user_id):
     return Response({"message": "You have unfollowed this user"}, status=status.HTTP_200_OK)
 
 
-# Endpoint: /api/follower_list/{user_id}
+# Endpoint: /api/follower_list/{user_id}/?page={}&page_size={}
 # API view to view a user's follower list
 # Note: we don't have to check if requesting user has access to this list since the user_profile
 #       API view in the user_views already checks for this access
@@ -193,8 +194,18 @@ def get_followers(request, user_id):
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Get a list of all the user's followers
-    followers = Follow.objects.filter(following=user).select_related('follower')
+    # Get the current page number from the request's query parameters
+    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
+
+    # Get the page size from the request's query parameters
+    page_size = int(request.query_params.get('page_size', 20))  # Default page size is 20
+
+    # Calculate the starting and ending index for slicing
+    start_index = (page_number - 1) * page_size
+    end_index = start_index + page_size
+
+    # Get a paginated list of the user's followers
+    followers = Follow.objects.filter(following=user).select_related('follower')[start_index:end_index]
     follower_users = [follow.follower for follow in followers]
 
     serializer = FollowSerializer(follower_users, many=True, context={'request': request})
@@ -202,7 +213,7 @@ def get_followers(request, user_id):
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-# Endpoint: /api/following_list/{user_id}
+# Endpoint: /api/following_list/{user_id}/?page={}&page_size={}
 # API view to view a user's following list
 @api_view(['GET'])
 def get_following(request, user_id):
@@ -211,8 +222,18 @@ def get_following(request, user_id):
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Get a list of all the user's that they follow
-    followings = Follow.objects.filter(follower=user).select_related('following')
+    # Get the current page number from the request's query parameters
+    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
+
+    # Get the page size from the request's query parameters
+    page_size = int(request.query_params.get('page_size', 20))  # Default page size is 20
+
+    # Calculate the starting and ending index for slicing
+    start_index = (page_number - 1) * page_size
+    end_index = start_index + page_size
+
+    # Get a paginated list of the user's that the requesting user follows
+    followings = Follow.objects.filter(follower=user).select_related('following')[start_index:end_index]
     following_users = [following.following for following in followings]
 
     serializer = FollowSerializer(following_users, many=True, context={'request': request})

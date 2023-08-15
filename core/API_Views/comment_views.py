@@ -96,7 +96,7 @@ def delete_comment(request, comment_id):
     return Response({"message": "Comment deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 
-# Endpoint: /api/comments/post/{post_id}/
+# Endpoint: /api/comments/post/{post_id}/?page={}&page_size={}
 # API view to view all the comments for a specific post
 @api_view(['GET'])
 def get_post_comments(request, post_id):
@@ -105,7 +105,18 @@ def get_post_comments(request, post_id):
     except Post.DoesNotExist:
         return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    comments = post.post_comments.all()  # Access comments using the related_name
+    # Get the current page number from the request's query parameters
+    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
+
+    # Get the page size from the request's query parameters
+    page_size = int(request.query_params.get('page_size', 20))  # Default page size is 20
+
+    # Calculate the starting and ending index for slicing
+    start_index = (page_number - 1) * page_size
+    end_index = start_index + page_size
+
+    # Access comments for the specified post using the related_name
+    comments = post.post_comments[start_index:end_index]
     serializer = CommentSerializer(comments, many=True, context={'request': request})
 
     return Response(serializer.data, status=status.HTTP_200_OK)

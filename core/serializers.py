@@ -127,7 +127,7 @@ class FollowSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'profile_picture', 'is_followed_by_requesting_user']
+        fields = ['username', 'profile_picture', 'requesting_user_follow_status']
 
 
 class MessageSerializer(serializers.ModelSerializer):

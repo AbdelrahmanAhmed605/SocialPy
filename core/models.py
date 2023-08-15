@@ -54,10 +54,12 @@ class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='post_comments')  # ForeignKey Post of the post being commented on
     content = models.TextField(max_length=500)  # Text content of the comment
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.post}"
+
+    class Meta:
+        ordering = ['-created_at']
 
 
 # Model to represent user follows (followers and following)
@@ -83,12 +85,15 @@ class Message(models.Model):
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')  # ForeignKey User that sent the message
     receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')  # ForeignKey User that received the message
     content = models.TextField(max_length=1000)  # Text content of the message
-    timestamp = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     is_delivered = models.BooleanField(default=False)  # Track if the message has been delivered
     is_read = models.BooleanField(default=False)  # Track if the message has been read
 
     def __str__(self):
-        return f"{self.sender.username} to {self.receiver.username} - {self.timestamp}"
+        return f"{self.sender.username} to {self.receiver.username} - {self.created_at}"
+
+    class Meta:
+        ordering = ['-created_at']
 
 
 # Model to represent the notifications a user will receive
@@ -111,3 +116,6 @@ class Notification(models.Model):
 
     def __str__(self):
         return f'{self.notification_type} notification for {self.recipient}'
+
+    class Meta:
+        ordering = ['-created_at']

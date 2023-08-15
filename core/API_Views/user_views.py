@@ -107,13 +107,25 @@ def user_logout(request):
     return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
 
 
-# Endpoint: /api/feed/
+# Endpoint: /api/feed/?page={}&page_size={}
 # API view to get posts from the users that the current user follows
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def user_feed(request):
     following_users = request.user.following.filter(follow_status='accepted')  # Obtains all the users the requesting user is following
-    feed_posts = Post.objects.filter(user__in=following_users)  # fetches all posts from the users in following_users
+
+    # Get the current page number from the request's query parameters
+    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
+
+    # Get the page size from the request's query parameters
+    page_size = int(request.query_params.get('page_size', 20))  # Default page size is 20
+
+    # Calculate the starting and ending index for slicing
+    start_index = (page_number - 1) * page_size
+    end_index = start_index + page_size
+
+    # fetch the posts from the users in following_users
+    feed_posts = Post.objects.filter(user__in=following_users)[start_index:end_index]
 
     # The context is used to pass the request to the PostSerializer to perform custom logic
     serializer = PostSerializer(feed_posts, many=True, context={'request': request})
@@ -121,13 +133,23 @@ def user_feed(request):
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-# Endpoint: /api/user/profile/{user_id}/
+# Endpoint: /api/user/profile/{user_id}/?page={}&page_size={}
 # API view to get a users profile and its information
 @api_view(['GET'])
 def user_profile(request, user_id):
     try:
         # Get user by username
         user = User.objects.get(id=user_id)
+
+        # Get the current page number from the request's query parameters
+        page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
+
+        # Get the page size from the request's query parameters
+        page_size = int(request.query_params.get('page_size', 20))  # Default page size is 20
+
+        # Calculate the starting and ending index for slicing
+        start_index = (page_number - 1) * page_size
+        end_index = start_index + page_size
 
         # Use functions in the UserSerializer to get the users number of posts, followers, and following
         num_followers = user.num_followers()
@@ -168,8 +190,8 @@ def user_profile(request, user_id):
         # If we are in this section below, it means the above elif statement didn't run, meaning we are
         # attempting to view a user that is public or private, but we follow them
 
-        # Get user's posts for users the requesting user has access to
-        users_posts = Post.objects.filter(user=user)
+        # Get a paginated list of the user's posts for users the requesting user has access to
+        users_posts = Post.objects.filter(user=user)[start_index:end_index]
         serializer = PostSerializer(users_posts, many=True)
 
         # Add the follow status and additional information to the response data
@@ -218,7 +240,7 @@ def change_profile_privacy(request):
     return Response({'success': 'Profile privacy updated successfully'}, status=status.HTTP_200_OK)
 
 
-# Endpoint: /api/search/users/
+# Endpoint: /api/search/users/?page={}&page_size={}
 # API view to search for users
 @api_view(['GET'])
 def search_users(request):
@@ -227,8 +249,18 @@ def search_users(request):
     if not username:
         return Response({"error": "Please provide a username query parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Search for users based on username or email
-    matched_users = User.objects.filter(username__icontains=username)
+    # Get the current page number from the request's query parameters
+    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
+
+    # Get the page size from the request's query parameters
+    page_size = int(request.query_params.get('page_size', 5))  # Default page size is 5
+
+    # Calculate the starting and ending index for slicing
+    start_index = (page_number - 1) * page_size
+    end_index = start_index + page_size
+
+    # Search for users based on username
+    matched_users = User.objects.filter(username__icontains=username)[start_index:end_index]
 
     serializer = UserSerializer(matched_users, many=True)
 
