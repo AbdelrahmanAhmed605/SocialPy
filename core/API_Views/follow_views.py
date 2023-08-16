@@ -49,7 +49,7 @@ def follow_user(request, user_id):
             f"notifications_{following_user.id}",
             {
                 "type": "notification",
-                "unique_identifier": notification.id,
+                "unique_identifier": str(notification.id),
                 "message": f"{follower_user.username} sent you a follow request",
                 "sender_profile_picture_url": follower_user.profile_picture.url if follower_user.profile_picture else None,
             }
@@ -73,7 +73,7 @@ def follow_user(request, user_id):
             f"notifications_{following_user.id}",
             {
                 "type": "notification",
-                "unique_identifier": notification.id,
+                "unique_identifier": str(notification.id),
                 "message": f"{follower_user.username} started following you",
                 "sender_profile_picture_url": follower_user.profile_picture.url if follower_user.profile_picture else None,
             }
@@ -116,7 +116,7 @@ def accept_follow_request(request, follower_id):
             f"notifications_{follower_user.id}",
             {
                 "type": "notification",
-                "unique_identifier": notification.id,
+                "unique_identifier": str(notification.id),
                 "message": f"{request.user.username} accepted your follow request",
                 "sender_profile_picture_url": request.user.profile_picture.url if request.user.profile_picture else None,
             }
@@ -162,7 +162,7 @@ def unfollow_user(request, user_id):
 
             # Check if the notification exists
             if notification:
-                notification_id = notification.id  # Store the ID for WebSocket use
+                notification_id = str(notification.id)  # Store the ID for WebSocket use
 
                 # Delete the associated notification
                 notification.delete()

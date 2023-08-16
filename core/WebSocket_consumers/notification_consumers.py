@@ -1,5 +1,6 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
+from ..models import Notification
 
 
 # WebSocket consumer for handling real-time notifications.
@@ -35,6 +36,18 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
 
+    # Marks a notification in the Live WebSocket as read if the user reading the notification is the recipient
+    async def mark_notification_as_read(self, unique_identifier):
+        # Find the notification by its unique identifier and mark it as read
+        try:
+            notification_id = int(unique_identifier)
+            notification = Notification.objects.get(id=notification_id)
+            if notification.recipient == self.scope["user"] and not notification.is_read:
+                notification.is_read = True
+                notification.save()
+        except (ValueError, Notification.DoesNotExist):
+            pass
+
     # Sends a new notification message to the connected user.
     async def notify_notification(self, event):
         unique_identifier = event["unique_identifier"]  # notification's id
@@ -53,6 +66,9 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             "sender_profile_picture_url": sender_profile_picture_url,
             "post_media_url": post_media_url,
         }))
+
+        # Mark the notification as read if the recipient is the current user
+        await self.mark_notification_as_read(unique_identifier)
 
     # Removes a specific notification from the user's WebSocket
     async def remove_notification(self, event):

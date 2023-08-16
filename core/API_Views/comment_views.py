@@ -44,7 +44,7 @@ def create_comment(request, post_id):
         f"notifications_{post.user.id}",
         {
             "type": "notification",
-            "unique_identifier": notification.id,
+            "unique_identifier": str(notification.id),
             "message": f"{request.user.username} commented on your post",
             "sender_profile_picture_url": request.user.profile_picture.url if request.user.profile_picture else None,
             "post_media_url": post.media.url if post.media else None,
@@ -80,7 +80,7 @@ def delete_comment(request, comment_id):
 
     # Check if the notification exists
     if notification:
-        notification_id = notification.id  # Store the ID for WebSocket use
+        notification_id = str(notification.id)  # Store the ID for WebSocket use
         notification.delete()
 
         # Remove the notification for the post author via WebSocket

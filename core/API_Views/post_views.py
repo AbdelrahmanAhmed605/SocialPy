@@ -94,7 +94,7 @@ def like_post(request, post_id):
         f"notifications_{post.user.id}",
         {
             "type": "notification",
-            "unique_identifier": notification.id,
+            "unique_identifier": str(notification.id),
             "message": f"{request.user.username} liked your post",
             "sender_profile_picture_url": request.user.profile_picture.url if request.user.profile_picture else None,
             "post_media_url": post.media.url if post.media else None,
@@ -130,7 +130,7 @@ def unlike_post(request, post_id):
 
     # Check if the notification exists
     if notification:
-        notification_id = notification.id  # Store the ID for WebSocket use
+        notification_id = str(notification.id)  # Store the ID for WebSocket use
         notification.delete()  # Delete the notification
 
         # Remove the notification for the post author via WebSocket
