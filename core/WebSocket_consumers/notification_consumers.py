@@ -52,6 +52,9 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     async def notify_notification(self, event):
         unique_identifier = event["unique_identifier"]  # notification's id
         message = event["message"]  # notification message
+        notification_type = event["notification_type"]  # type of notification
+        recipient = event["recipient"]  # recipient of notification
+        sender = event["sender"]  # sender of notification (user who comitted action)
 
         # user profile picture associated with the notification (ex: user who liked your post)
         sender_profile_picture_url = event["sender_profile_picture_url"]
@@ -62,6 +65,9 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             "type": "notification",
             "unique_identifier": unique_identifier,
+            "notification_type": notification_type,
+            "recipient": recipient,
+            "sender": sender,
             "message": message,
             "sender_profile_picture_url": sender_profile_picture_url,
             "post_media_url": post_media_url,
@@ -69,6 +75,18 @@ class NotificationConsumer(AsyncWebsocketConsumer):
 
         # Mark the notification as read if the recipient is the current user
         await self.mark_notification_as_read(unique_identifier)
+
+    # Function to send follow request action (accept or decline) updates to frontend
+    async def notification_follow_request_action(self, event):
+        action = event["action"]  # 'accept' or 'decline'
+        unique_identifier = event["unique_identifier"]
+
+        # Send update to the connected frontend clients
+        await self.send(text_data=json.dumps({
+            "type": "notification_follow_request_action",
+            "action": action,
+            "unique_identifier": unique_identifier,
+        }))
 
     # Removes a specific notification from the user's WebSocket
     async def remove_notification(self, event):

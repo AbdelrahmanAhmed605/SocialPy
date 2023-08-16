@@ -101,6 +101,7 @@ class Notification(models.Model):
     TYPE_CHOICES = (
         ('follow_request', 'Follow Request'),
         ('follow_accept', 'Follow Request Accepted'),
+        ('follow_decline', 'Follow Request Declined'),
         ('new_follower', 'New Follower'),
         ('new_comment', 'New Comment'),
         ('new_like', 'New Like'),

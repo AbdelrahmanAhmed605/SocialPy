@@ -43,13 +43,16 @@ def follow_user(request, user_id):
             notification_type='follow_request'
         )
 
-        # Notify the recipient user via WebSocket about the new follow request
+        # Notify the user being followed via WebSocket about the new follow request
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             f"notifications_{following_user.id}",
             {
                 "type": "notification",
                 "unique_identifier": str(notification.id),
+                "notification_type": "follow_request",
+                "recipient": str(following_user.id),
+                "sender": str(follower_user.id),
                 "message": f"{follower_user.username} sent you a follow request",
                 "sender_profile_picture_url": follower_user.profile_picture.url if follower_user.profile_picture else None,
             }
@@ -67,13 +70,16 @@ def follow_user(request, user_id):
             notification_type='new_follower'
         )
 
-        # Notify the recipient user via WebSocket about the new follower
+        # Notify the user being followed via WebSocket about the new follower
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             f"notifications_{following_user.id}",
             {
                 "type": "notification",
                 "unique_identifier": str(notification.id),
+                "notification_type": "new_follower",
+                "recipient": str(following_user.id),
+                "sender": str(follower_user.id),
                 "message": f"{follower_user.username} started following you",
                 "sender_profile_picture_url": follower_user.profile_picture.url if follower_user.profile_picture else None,
             }
@@ -82,11 +88,11 @@ def follow_user(request, user_id):
         return Response({"message": "You are now following this user"}, status=status.HTTP_201_CREATED)
 
 
-# Endpoint: /api/accept/follow/user/{user_id}
+# Endpoint: /api/follow_request/user/{user_id}
 # API view to allow a private user to accept a follow request
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def accept_follow_request(request, follower_id):
+def respond_follow_request(request, follower_id):
     try:
         follower_user = User.objects.get(id=follower_id)
     except User.DoesNotExist:
@@ -97,28 +103,50 @@ def accept_follow_request(request, follower_id):
     except Follow.DoesNotExist:
         return Response({"error": "No pending follow request found from this user"}, status=status.HTTP_404_NOT_FOUND)
 
+    # Get the original follow_request notification
+    original_notification = Notification.objects.get(recipient=request.user, sender=follower_user, notification_type='follow_request')
+
     action = request.data.get('action')  # 'accept' or 'decline'
 
     if action == 'accept':
+        # Update the follow status of the Follow instance between the 2 users
         follow.follow_status = 'accepted'
         follow.save()
 
-        # Create a notification for the accepted follow request
-        notification = Notification.objects.create(
+        # Update the original "follow_request" notification to "new_follower"
+        original_notification.notification_type = 'new_follower'
+        original_notification.save()
+
+        # Create a notification to the user who created the follow request informing them it was accepted
+        accepted_notification = Notification.objects.create(
             recipient=follower_user,
             sender=request.user,
             notification_type='follow_accept'
         )
 
-        # Notify the recipient user via WebSocket
+        # Notify the user who created the follow request that it was accepted via WebSocket
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             f"notifications_{follower_user.id}",
             {
                 "type": "notification",
-                "unique_identifier": str(notification.id),
+                "unique_identifier": str(accepted_notification.id),
+                "notification_type": "follow_accept",
+                "recipient": str(follower_user.id),
+                "sender": str(request.user.id),
                 "message": f"{request.user.username} accepted your follow request",
                 "sender_profile_picture_url": request.user.profile_picture.url if request.user.profile_picture else None,
+            }
+        )
+
+        # Notify the user who accepted the request via WebSocket (to apply necessary changes to their front-end)
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"notifications_{request.user.id}",
+            {
+                "type": "notification_follow_request_action",
+                "action": "accept",
+                "unique_identifier": str(original_notification.id),
             }
         )
 
@@ -126,6 +154,21 @@ def accept_follow_request(request, follower_id):
     elif action == 'decline':
         # Delete the Follow instance if the user declined the follow request
         follow.delete()
+
+        # Update the original "follow_request" notification to "follow_decline"
+        original_notification.notification_type = 'follow_decline'
+        original_notification.save()
+
+        # Notify the user who declined the request via WebSocket (to apply necessary changes to their front-end)
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"notifications_{request.user.id}",
+            {
+                "type": "notification_follow_request_action",
+                "action": "decline",
+                "unique_identifier": str(original_notification.id),
+            }
+        )
         return Response({"message": "Follow request declined"}, status=status.HTTP_200_OK)
     else:
         return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)

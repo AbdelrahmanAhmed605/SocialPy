@@ -95,6 +95,9 @@ def like_post(request, post_id):
         {
             "type": "notification",
             "unique_identifier": str(notification.id),
+            "notification_type": "new_like",
+            "recipient": str(post.user.id),
+            "sender": str(request.user.id),
             "message": f"{request.user.username} liked your post",
             "sender_profile_picture_url": request.user.profile_picture.url if request.user.profile_picture else None,
             "post_media_url": post.media.url if post.media else None,
