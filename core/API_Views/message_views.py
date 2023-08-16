@@ -5,6 +5,7 @@ from rest_framework import status
 
 # The Q object helps build complex queries using logical operators to filter database records based on multiple conditions
 from django.db.models import Q
+from django.db.models import Max
 from django.core.exceptions import PermissionDenied
 
 from asgiref.sync import async_to_sync
@@ -157,18 +158,23 @@ def get_and_search_conversation_partners(request):
     end_index = start_index + page_size
 
     # Check if a search query was applied to view for specific users
+    # The last_interaction annotated field allows us to order the Users by their most recent interaction with the requesting user
     if username:
         # Filter conversation partners by username query
         conversation_partners = User.objects.filter(
             Q(received_messages__sender=request.user) | Q(sent_messages__receiver=request.user),
             username__icontains=username
-        ).distinct().exclude(id=request.user.id)[start_index:end_index]
+        ).annotate(
+            last_interaction=Max('received_messages__created_at', 'sent_messages__created_at')
+        ).distinct().exclude(id=request.user.id).order_by('-last_interaction')[start_index:end_index]
 
     else:
         # Get a paginated list of unique users that the requesting user has had conversations with
         conversation_partners = User.objects.filter(
             Q(received_messages__sender=request.user) | Q(sent_messages__receiver=request.user)
-        ).distinct().exclude(id=request.user.id)[start_index:end_index]
+        ).annotate(
+            last_interaction=Max('received_messages__created_at', 'sent_messages__created_at')
+        ).distinct().exclude(id=request.user.id).order_by('-last_interaction')[start_index:end_index]
 
     serializer = UserSerializer(conversation_partners, many=True)
 
