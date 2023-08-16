@@ -7,8 +7,8 @@ from rest_framework.response import Response
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-from core.models import Post, Comment, Notification
-from core.serializers import PostSerializer
+from core.models import Post, Comment, Notification, Hashtag
+from core.serializers import PostSerializer, HashtagSerializer
 
 
 # Endpoint: List Posts: GET /api/posts/
@@ -146,7 +146,34 @@ def unlike_post(request, post_id):
     return Response({"message": "Post unliked successfully"}, status=status.HTTP_200_OK)
 
 
-# Endpoint: /api/hashtag/posts
+# Endpoint: /api/hashtags/?hashtag={}&page={}&page_size={}
+# API view to allow users to find hashtag names that are similar to the one in the search query
+@api_view(['GET'])
+def suggest_hashtags(request):
+    hashtag = request.query_params.get('hashtag')  # Get the search query from query parameters
+
+    if not hashtag:
+        return Response({"error": "Please provide a hashtag query parameter"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Get the current page number from the request's query parameters
+    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
+
+    # Get the page size from the request's query parameters
+    page_size = int(request.query_params.get('page_size', 5))  # Default page size is 5
+
+    # Calculate the starting and ending index for slicing
+    start_index = (page_number - 1) * page_size
+    end_index = start_index + page_size
+
+    # Search for hashtag names that are similar to the provided search query
+    suggested_hashtags = Hashtag.objects.filter(name__icontains=hashtag)[start_index:end_index]
+
+    serializer = HashtagSerializer(suggested_hashtags, many=True)
+
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# Endpoint: /api/hashtag/posts/?hashtag={}&page={}&page_size={}
 # API view to allow users to search for posts by a specific hashtag
 @api_view(['GET'])
 def search_hashtags(request):
@@ -155,27 +182,47 @@ def search_hashtags(request):
     if not hashtag:
         return Response({"error": "Please provide a hashtag query parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Search for posts with the specified hashtag and a public visibility
-    matched_posts = Post.objects.filter(hashtags__name=hashtag, visibility='public')
+    # Get the current page number from the request's query parameters
+    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
+
+    # Get the page size from the request's query parameters
+    page_size = int(request.query_params.get('page_size', 20))  # Default page size is 20
+
+    # Calculate the starting and ending index for slicing
+    start_index = (page_number - 1) * page_size
+    end_index = start_index + page_size
+
+    # Search for paginated posts with the specified hashtag and a public visibility
+    matched_posts = Post.objects.filter(hashtags__name=hashtag, visibility='public')[start_index:end_index]
 
     serializer = PostSerializer(matched_posts, many=True)
 
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-# Endpoint: /api/explore/posts
+# Endpoint: /api/explore/posts/?page={}&page_size={}
 # API view to allow users to have an explore page (see posts created by public accounts)
 @api_view(['GET'])
 def explore_page(request):
-    # If the user is authenticated, then show posts of public users they do not follow
+    # Get the current page number from the request's query parameters
+    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
+
+    # Get the page size from the request's query parameters
+    page_size = int(request.query_params.get('page_size', 20))  # Default page size is 20
+
+    # Calculate the starting and ending index for slicing
+    start_index = (page_number - 1) * page_size
+    end_index = start_index + page_size
+
+    # If the user is authenticated, then show paginated posts of public users they do not follow
     if request.user.is_authenticated:
         following_users = request.user.following.all()
-        explore_posts = Post.objects.filter(visibility='public').exclude(user__in=following_users)
+        explore_posts = Post.objects.filter(visibility='public').exclude(user__in=following_users)[start_index:end_index]
         serializer = PostSerializer(explore_posts, many=True, context={'request': request})
 
     else:
-        # If the user is not authenticated, then show posts of public users
-        explore_posts = Post.objects.filter(visibility='public')
+        # If the user is not authenticated, then show paginated posts of public users
+        explore_posts = Post.objects.filter(visibility='public')[start_index:end_index]
         serializer = PostSerializer(explore_posts, many=True)
 
     return Response(serializer.data, status=status.HTTP_200_OK)
