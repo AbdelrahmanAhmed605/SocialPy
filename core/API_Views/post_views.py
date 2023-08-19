@@ -30,6 +30,10 @@ class PostListCreateView(generics.ListCreateAPIView):
         instance = serializer.save(user=self.request.user)  # Set the user of the post
         instance.hashtags.set(hashtags)  # Set hashtags after the instance is saved
 
+        # Increment the num_posts counter for the user using F object
+        self.request.user.num_posts = F('num_posts') + 1
+        self.request.user.save()  # Save the user object with the updated counter
+
 
 # Endpoint: Retrieve Post: GET /api/posts/{post_id}/
 # Endpoint: Update Post: PATCH /api/posts/{post_id}/ (PATCH not PUT since we allow partial updates)
@@ -66,6 +70,10 @@ class PostDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
         comments.delete()
 
         instance.delete()
+
+        # Decrement the num_posts counter for the user using F object
+        self.request.user.num_posts = F('num_posts') - 1
+        self.request.user.save()  # Save the user object with the updated counter
 
 
 # Endpoint: /api/post/{post_id}/like/

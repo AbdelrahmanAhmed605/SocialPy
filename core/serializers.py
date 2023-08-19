@@ -7,29 +7,9 @@ from .models import User, Hashtag, Post, Comment, Follow, Message, Notification
 # JSON data will be converted to python data from API requests to be saved in Django model instances. (deserialization)
 
 class UserSerializer(serializers.ModelSerializer):
-    # Create new fields containing the number of followers, following, and posts for a user
-    num_followers = serializers.SerializerMethodField()
-    num_following = serializers.SerializerMethodField()
-    num_posts = serializers.SerializerMethodField()
-
-    # Function to count the number of followers for a specific user
-    # followers is a related_name field in the Follow model for the User field foreign key
-    def get_num_followers(self, obj):
-        return obj.follower.filter(follow_status='accepted').count()
-
-    # Function to count the number of following for a specific user
-    # following is a related_name field in the Follow model for the User field foreign key
-    def get_num_following(self, obj):
-        return obj.following.filter(follow_status='accepted').count()
-
-    # Function to count the number of posts for a specific user
-    # user_posts is a related_name field in the Post model for the User field foreign key
-    def get_num_posts(self, obj):
-        return obj.user_posts.count()
-
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'profile_picture', 'bio', 'contact_information', 'profile_privacy', 'num_followers', 'num_following', 'num_posts']
+        fields = '__all__'
 
 
 class HashtagSerializer(serializers.ModelSerializer):

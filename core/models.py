@@ -11,6 +11,9 @@ class User(AbstractUser):
     bio = models.TextField(max_length=300, blank=True)  # Short bio or description for the user
     contact_information = models.CharField(max_length=100, blank=True)  # Contact information for the user
     profile_privacy = models.CharField(max_length=10, choices=[('public', 'Public'), ('private', 'Private')], default='public')  # Privacy setting for user profile
+    num_followers = models.PositiveIntegerField(default=0)  # counter to keep track of users num of followers
+    num_following = models.PositiveIntegerField(default=0)  # counter to keep track of num of users a user is following
+    num_posts = models.PositiveIntegerField(default=0)  # counter to keep track of num of posts made by the user
 
     def __str__(self):
         return self.username

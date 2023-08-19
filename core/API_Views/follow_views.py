@@ -1,5 +1,7 @@
 # The Q object helps build complex queries using logical operators to filter database records based on multiple conditions
 from django.db.models import Q
+# lets you directly manipulate database fields within database queries, leading to more efficient operations
+from django.db.models import F
 from django.db import transaction, DatabaseError, IntegrityError
 
 from rest_framework.decorators import api_view, permission_classes
@@ -63,6 +65,13 @@ def follow_user(request, user_id):
         # Create the follow relationship immediately for public users
         Follow.objects.create(follower=follower_user, following=following_user, follow_status='accepted')
 
+        # Increment the num_followers counter for the user being followed using F object
+        following_user.num_followers = F('num_followers') + 1
+        following_user.save()  # Save the user object with the updated counter
+        # Increment the num_following counter for the user who is following using F object
+        follower_user.num_following = F('num_following') + 1
+        follower_user.save()  # Save the user object with the updated counter
+
         # Create a new_follower notification for the user being followed
         notification = Notification.objects.create(
             recipient=following_user,
@@ -112,6 +121,13 @@ def respond_follow_request(request, follower_id):
         # Update the follow status of the Follow instance between the 2 users
         follow.follow_status = 'accepted'
         follow.save()
+
+        # Increment the num_followers counter for the user being followed using F object
+        request.user.num_followers = F('num_followers') + 1
+        request.user.save()
+        # Increment the num_following counter for the user who is following using F object
+        follower_user.num_following = F('num_following') + 1
+        follower_user.save()
 
         # Update the original "follow_request" notification to "new_follower"
         original_notification.notification_type = 'new_follower'
@@ -192,10 +208,17 @@ def unfollow_user(request, user_id):
         return Response({"error": "You are not following this user"}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        # Use a transaction to handle both unfollowing and deleting the associated notification
+        # Use a transaction to handle unfollowing, updating the counters, and deleting the associated notification
         with transaction.atomic():
             # Remove the follow relationship
             follow.delete()
+
+            # Decrement the num_followers counter for the user being unfollowed using F object
+            following_user.num_followers = F('num_followers') - 1
+            following_user.save()
+            # Decrement the num_following counter for the user who is unfollowing using F object
+            follower_user.num_following = F('num_following') - 1
+            follower_user.save()
 
             # Fetch the associated "follow_request" or "new_follower" notification
             notification = Notification.objects.filter(
