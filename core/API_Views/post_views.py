@@ -1,3 +1,6 @@
+# lets you directly manipulate database fields within database queries, leading to more efficient operations
+from django.db.models import F
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
@@ -78,6 +81,10 @@ def like_post(request, post_id):
     if request.user in post.likes.all():
         return Response({"error": "You already liked this post"}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Increment the counter for the like count
+    post.like_count = F('like_count') + 1
+    post.save()  # Save the post to update the counter
+
     post.likes.add(request.user)
 
     # Create a new_like notification for the post author
@@ -119,6 +126,10 @@ def unlike_post(request, post_id):
 
     if request.user not in post.likes.all():
         return Response({"error": "You haven't liked this post"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Decrement the counter for the like count
+    post.like_count = F('like_count') - 1
+    post.save()  # Save the post to update the counter
 
     # Remove the like
     post.likes.remove(request.user)

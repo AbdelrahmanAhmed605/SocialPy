@@ -45,19 +45,6 @@ class PostSerializer(serializers.ModelSerializer):
     # Custom field to indicate if the requesting user has liked the post
     liked_by_user = serializers.SerializerMethodField()
 
-    # Create new fields containing the number of likes and comments for a post
-    num_likes = serializers.SerializerMethodField()
-    num_comments = serializers.SerializerMethodField()
-
-    # Function to count the number of likes for a specific post
-    def get_num_likes(self, obj):
-        return obj.likes.count()
-
-    # Function to count the number of comments for a specific post
-    # post_comments is the related_name field in the Comment model for the Post field foreign key
-    def get_num_comments(self, obj):
-        return obj.post_comments.count()
-
     # Function that takes a list of hashtag names and creates or retrieves corresponding Hashtag objects.
     # It returns a list of Hashtag objects that are associated with the provided names.
     def create_hashtags(self, hashtag_names):
@@ -79,7 +66,7 @@ class PostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['user', 'content', 'media', 'visibility', 'hashtags', 'created_at', 'updated_at', 'likes', 'num_likes', 'num_comments', 'liked_by_user']
+        fields = ['user', 'content', 'media', 'visibility', 'hashtags', 'created_at', 'updated_at', 'likes', 'like_count', 'comment_count', 'liked_by_user']
 
 
 class CommentSerializer(serializers.ModelSerializer):

@@ -1,3 +1,6 @@
+# lets you directly manipulate database fields within database queries, leading to more efficient operations
+from django.db.models import F
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -28,6 +31,10 @@ def create_comment(request, post_id):
 
     comment = Comment.objects.create(user=request.user, post=post, content=content)
     serializer = CommentSerializer(comment)
+
+    # Increment the counter for the comment count
+    post.comment_count = F('comment_count') + 1
+    post.save()  # Save the post to update the counter
 
     # Create a new_comment notification for the post author
     notification = Notification.objects.create(
@@ -72,6 +79,10 @@ def delete_comment(request, comment_id):
         raise PermissionDenied("You don't have permission to delete this comment")
 
     comment.delete()
+
+    # Decrement the counter for the comment count
+    comment.post.comment_count = F('comment_count') - 1
+    comment.post.save()  # Save the post to update the counter
 
     # Fetch the associated 'new_comment' notification
     notification = Notification.objects.filter(
