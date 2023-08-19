@@ -21,11 +21,21 @@ class PostListCreateView(generics.ListCreateAPIView):
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]  # Only authenticated users can create posts
 
+    # Function that takes a list of hashtag names and creates or retrieves corresponding Hashtag objects.
+    # It returns a list of Hashtag objects that are associated with the provided names.
+    def create_hashtags(self, hashtag_names):
+        hashtags = []  # Initialize an empty list to store the hashtag objects
+        for name in hashtag_names:
+            # Try to retrieve an existing hashtag with the given name, or create a new one
+            hashtag, created = Hashtag.objects.get_or_create(name=name)
+            hashtags.append(hashtag)  # Add the retrieved or newly created hashtag to the list
+        return hashtags  # Return the list of hashtag objects
+
     def perform_create(self, serializer):
         hashtag_names = serializer.validated_data.pop('hashtags', [])  # Extract hashtag names from validated data
 
         # create_hashtags is a function in the serializer that either creates or retrieves corresponding hashtags
-        hashtags = serializer.create_hashtags(hashtag_names)
+        hashtags = self.create_hashtags(hashtag_names)
 
         instance = serializer.save(user=self.request.user)  # Set the user of the post
         instance.hashtags.set(hashtags)  # Set hashtags after the instance is saved

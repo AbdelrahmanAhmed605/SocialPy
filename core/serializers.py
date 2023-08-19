@@ -25,16 +25,6 @@ class PostSerializer(serializers.ModelSerializer):
     # Custom field to indicate if the requesting user has liked the post
     liked_by_user = serializers.SerializerMethodField()
 
-    # Function that takes a list of hashtag names and creates or retrieves corresponding Hashtag objects.
-    # It returns a list of Hashtag objects that are associated with the provided names.
-    def create_hashtags(self, hashtag_names):
-        hashtags = []  # Initialize an empty list to store the hashtag objects
-        for name in hashtag_names:
-            # Try to retrieve an existing hashtag with the given name, or create a new one
-            hashtag, created = Hashtag.objects.get_or_create(name=name)
-            hashtags.append(hashtag)  # Add the retrieved or newly created hashtag to the list
-        return hashtags  # Return the list of hashtag objects
-
     # Function that checks if a requesting user liked the post that is being retrieved
     # This will be used on the front end to provide indication to users if they liked a post or not
     def get_liked_by_user(self, post):
