@@ -151,11 +151,6 @@ def user_profile(request, user_id):
         start_index = (page_number - 1) * page_size
         end_index = start_index + page_size
 
-        # Use functions in the UserSerializer to get the users number of posts, followers, and following
-        num_followers = user.num_followers()
-        num_following = user.num_following()
-        num_posts = user.num_posts()
-
         # Check if there is a requesting user and get their follow status to the viewed user
         if request.user.is_authenticated:
             follow_instance = request.user.following.filter(id=user_id).first()
@@ -181,9 +176,9 @@ def user_profile(request, user_id):
                 'follow_status': follow_status,
                 'can_view': False,  # Indicate we cannot view the user's profile
                 'posts': None,  # Indicate that the user has no access to posts
-                'num_followers': num_followers,
-                'num_following': num_following,
-                'num_posts': num_posts,
+                'num_followers': user.num_followers,  # Use the counter field from the User model
+                'num_following': user.num_following,  # Use the counter field from the User model
+                'num_posts': user.num_posts,  # Use the counter field from the User model
             }
             return Response(response_data, status=status.HTTP_200_OK)
 
@@ -203,9 +198,9 @@ def user_profile(request, user_id):
             'follow_status': follow_status,
             'can_view': True,  # indicate we can view the user's profile
             'posts': serializer.data,
-            'num_followers': num_followers,
-            'num_following': num_following,
-            'num_posts': num_posts,
+            'num_followers': user.num_followers,  # Use the counter field from the User model
+            'num_following': user.num_following,  # Use the counter field from the User model
+            'num_posts': user.num_posts,  # Use the counter field from the User model
         }
 
         return Response(response_data, status=status.HTTP_200_OK)

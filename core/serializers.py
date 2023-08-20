@@ -36,7 +36,7 @@ class PostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['user', 'content', 'media', 'visibility', 'hashtags', 'created_at', 'updated_at', 'likes', 'like_count', 'comment_count', 'liked_by_user']
+        fields = ['user', 'content', 'media', 'visibility', 'hashtags', 'created_at', 'updated_at', 'like_count', 'comment_count', 'liked_by_user']
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -71,12 +71,12 @@ class FollowSerializer(serializers.ModelSerializer):
     requesting_user_follow_status = serializers.SerializerMethodField()
 
     # Function to get the follow status of the requesting user to the viewed user
-    def get_requesting_user_follow_status(self, user):
+    def get_requesting_user_follow_status(self, following_user):
         if 'request' in self.context:
             requesting_user = self.context['request'].user
             # Check if there is an authenticated requesting user
             if requesting_user.is_authenticated:
-                follow_instance = requesting_user.following.filter(id=user.id).first()
+                follow_instance = requesting_user.following.filter(id=following_user.id).first()
                 if follow_instance:
                     return follow_instance.follow_status  # return the follow status
         # If the requesting user is not authenticated, or we do not follow the user

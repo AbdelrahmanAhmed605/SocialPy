@@ -11,7 +11,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 from core.models import Post, Comment, Notification, Hashtag
-from core.serializers import PostSerializer, HashtagSerializer
+from core.serializers import PostSerializer, HashtagSerializer, FollowSerializer
 
 
 # Endpoint: List Posts: GET /api/posts/
@@ -256,5 +256,31 @@ def explore_page(request):
         # If the user is not authenticated, then show paginated posts of public users
         explore_posts = Post.objects.filter(visibility='public')[start_index:end_index]
         serializer = PostSerializer(explore_posts, many=True)
+
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# Endpoint: /api/post/{post_id}/likers/?page={}&page_size={}
+# API view to get a list of all the users who liked a post
+@api_view(['GET'])
+def post_likers(request, post_id):
+    try:
+        post = Post.objects.get(id=post_id)
+    except Post.DoesNotExist:
+        return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    # Get the current page number from the request's query parameters
+    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
+
+    # Get the page size from the request's query parameters
+    page_size = int(request.query_params.get('page_size', 20))  # Default page size is 20
+
+    # Calculate the starting and ending index for slicing
+    start_index = (page_number - 1) * page_size
+    end_index = start_index + page_size
+
+    users = post.likes.all()[start_index:end_index]  # Retrieve all users who liked the post
+
+    serializer = FollowSerializer(users, many=True, context={'request': request})
 
     return Response(serializer.data, status=status.HTTP_200_OK)
