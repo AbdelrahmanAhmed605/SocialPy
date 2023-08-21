@@ -11,6 +11,9 @@ class User(AbstractUser):
     bio = models.TextField(max_length=300, blank=True)  # Short bio or description for the user
     contact_information = models.CharField(max_length=100, blank=True)  # Contact information for the user
     profile_privacy = models.CharField(max_length=10, choices=[('public', 'Public'), ('private', 'Private')], default='public')  # Privacy setting for user profile
+    num_followers = models.PositiveIntegerField(default=0)  # counter to keep track of users num of followers
+    num_following = models.PositiveIntegerField(default=0)  # counter to keep track of num of users a user is following
+    num_posts = models.PositiveIntegerField(default=0)  # counter to keep track of num of posts made by the user
 
     def __str__(self):
         return self.username
@@ -40,6 +43,8 @@ class Post(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     likes = models.ManyToManyField(User, related_name='liked_posts')
+    like_count = models.PositiveIntegerField(default=0)
+    comment_count = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return f"{self.user.username} - {self.created_at}"
@@ -54,10 +59,12 @@ class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='post_comments')  # ForeignKey Post of the post being commented on
     content = models.TextField(max_length=500)  # Text content of the comment
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.post}"
+
+    class Meta:
+        ordering = ['-created_at']
 
 
 # Model to represent user follows (followers and following)
@@ -83,12 +90,15 @@ class Message(models.Model):
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')  # ForeignKey User that sent the message
     receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')  # ForeignKey User that received the message
     content = models.TextField(max_length=1000)  # Text content of the message
-    timestamp = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     is_delivered = models.BooleanField(default=False)  # Track if the message has been delivered
     is_read = models.BooleanField(default=False)  # Track if the message has been read
 
     def __str__(self):
-        return f"{self.sender.username} to {self.receiver.username} - {self.timestamp}"
+        return f"{self.sender.username} to {self.receiver.username} - {self.created_at}"
+
+    class Meta:
+        ordering = ['-created_at']
 
 
 # Model to represent the notifications a user will receive
@@ -96,6 +106,7 @@ class Notification(models.Model):
     TYPE_CHOICES = (
         ('follow_request', 'Follow Request'),
         ('follow_accept', 'Follow Request Accepted'),
+        ('follow_decline', 'Follow Request Declined'),
         ('new_follower', 'New Follower'),
         ('new_comment', 'New Comment'),
         ('new_like', 'New Like'),
@@ -111,3 +122,6 @@ class Notification(models.Model):
 
     def __str__(self):
         return f'{self.notification_type} notification for {self.recipient}'
+
+    class Meta:
+        ordering = ['-created_at']

@@ -1,16 +1,21 @@
-from django.db import transaction, DatabaseError, IntegrityError
-from django.db.models import Q
-
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
+# Q object helps build complex queries using logical operators to filter database records based on multiple conditions
+from django.db.models import Q
+# lets you directly manipulate database fields within database queries, leading to more efficient operations
+from django.db.models import F
+# Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
+from django.db import transaction, DatabaseError, IntegrityError
 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 from core.models import User, Follow, Notification
 from core.serializers import FollowSerializer
+from .api_utility_functions import get_pagination_indeces, notify_user, update_follow_counters
 
 
 # Endpoint: /api/follow/user/{user_id}
@@ -24,6 +29,7 @@ def follow_user(request, user_id):
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
+    # Set the following user as the request user (user who is attempting to follow another user)
     follower_user = request.user
 
     # Check if user already follows this user
@@ -32,100 +38,123 @@ def follow_user(request, user_id):
 
     # Check if the following_user is private
     if following_user.profile_privacy == 'private':
-        # Create the follow request with a 'pending' status
-        Follow.objects.create(follower=follower_user, following=following_user, follow_status='pending')
-
-        # Create a follow_request notification for the user being followed
-        notification = Notification.objects.create(
-            recipient=following_user,
-            sender=follower_user,
-            notification_type='follow_request'
-        )
-
-        # Notify the recipient user via WebSocket about the new follow request
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f"notifications_{following_user.id}",
-            {
-                "type": "notification",
-                "unique_identifier": notification.id,
-                "message": f"{follower_user.username} sent you a follow request",
-                "sender_profile_picture_url": follower_user.profile_picture.url if follower_user.profile_picture else None,
-            }
-        )
+        # Use an atomic transaction for creating the pending Follow instance and sending the notification
+        try:
+            with transaction.atomic():
+                # Create the follow request with a 'pending' status
+                Follow.objects.create(follower=follower_user, following=following_user, follow_status='pending')
+                # Create a follow_request notification for the user being followed and notify them via WebSocket
+                notify_user(following_user, follower_user, 'follow_request', "sent you a follow request")
+        except Exception as e:
+            return Response({"error": "An error occurred while processing the follow request"},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({"message": "Follow request sent"}, status=status.HTTP_201_CREATED)
+    # The following_user is public
     else:
-        # Create the follow relationship immediately for public users
-        Follow.objects.create(follower=follower_user, following=following_user, follow_status='accepted')
-
-        # Create a new_follower notification for the user being followed
-        notification = Notification.objects.create(
-            recipient=following_user,
-            sender=follower_user,
-            notification_type='new_follower'
-        )
-
-        # Notify the recipient user via WebSocket about the new follower
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f"notifications_{following_user.id}",
-            {
-                "type": "notification",
-                "unique_identifier": notification.id,
-                "message": f"{follower_user.username} started following you",
-                "sender_profile_picture_url": follower_user.profile_picture.url if follower_user.profile_picture else None,
-            }
-        )
+        # Use an atomic transaction for creating the Follow instance, updating follow counters,
+        # creating the notification and sending it via WebSocket using the utility function
+        try:
+            with transaction.atomic():
+                # Create the follow relationship immediately for public users
+                Follow.objects.create(follower=follower_user, following=following_user, follow_status='accepted')
+                # Update the num_followers and num_following counters for the users
+                update_follow_counters(following_user, follower_user)
+                # Create a new_follower notification for the user being followed and notify them via WebSocket
+                notify_user(following_user, follower_user, 'new_follower', "started following you")
+        except Exception as e:
+            return Response({"error": "An error occurred while processing the follow request"},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({"message": "You are now following this user"}, status=status.HTTP_201_CREATED)
 
 
-# Endpoint: /api/accept/follow/user/{user_id}
+# Endpoint: /api/respond_follow_request/user/{user_id}
 # API view to allow a private user to accept a follow request
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def accept_follow_request(request, follower_id):
+def respond_follow_request(request, follower_id):
     try:
         follower_user = User.objects.get(id=follower_id)
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
+    # Set the following user as the request user (user who is accepting/declining the follow_request)
+    following_user = request.user
+
+    # Find the Follow model instance for the pending follow request
     try:
-        follow = Follow.objects.get(follower=follower_user, following=request.user, follow_status='pending')
+        follow = Follow.objects.get(follower=follower_user, following=following_user, follow_status='pending')
     except Follow.DoesNotExist:
         return Response({"error": "No pending follow request found from this user"}, status=status.HTTP_404_NOT_FOUND)
 
-    action = request.data.get('action')  # 'accept' or 'decline'
+    # Get the requesting users deciding action on the follow request (accept or decline)
+    action = request.data.get('action')
+    # Get the original follow_request notification to update it based on the selected user action
+    original_notification = Notification.objects.get(recipient=following_user, sender=follower_user, notification_type='follow_request')
 
     if action == 'accept':
-        follow.follow_status = 'accepted'
-        follow.save()
+        # Use an atomic transaction for updating the Follow instance, follow counters, and original notification.
+        # Also, we are creating a new notification and sending it via WebSocket
+        try:
+            with transaction.atomic():
+                # Update the follow status of the Follow instance between the 2 users
+                follow.follow_status = 'accepted'
+                follow.save()
 
-        # Create a notification for the accepted follow request
-        notification = Notification.objects.create(
-            recipient=follower_user,
-            sender=request.user,
-            notification_type='follow_accept'
-        )
+                # Update the num_followers and num_following counters for the users
+                update_follow_counters(following_user, follower_user)
 
-        # Notify the recipient user via WebSocket
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f"notifications_{follower_user.id}",
-            {
-                "type": "notification",
-                "unique_identifier": notification.id,
-                "message": f"{request.user.username} accepted your follow request",
-                "sender_profile_picture_url": request.user.profile_picture.url if request.user.profile_picture else None,
-            }
-        )
+                # Update the original "follow_request" notification to "new_follower"
+                original_notification.notification_type = 'new_follower'
+                original_notification.save()
+
+                # Create a notification to the user who created the follow request informing them it was accepted
+                notify_user(follower_user, following_user, 'follow_accept', "accepted your follow request")
+
+                # Notify the user who accepted the request via WebSocket (to apply necessary changes to their front-end)
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f"notifications_{following_user.id}",
+                    {
+                        "type": "notification_follow_request_action",
+                        "action": "accept",
+                        "unique_identifier": str(original_notification.id),
+                    }
+                )
+        except Exception as e:
+            return Response({"error": "An error occurred while processing the response to the follow request"},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({"message": "Follow request accepted"}, status=status.HTTP_200_OK)
     elif action == 'decline':
-        # Delete the Follow instance if the user declined the follow request
-        follow.delete()
+        # Use an atomic transaction for deleting the Follow instance, and updating the original notification.
+        # Also, we are creating a new notification and sending it via WebSocket
+        try:
+            with transaction.atomic():
+                # Delete the Follow instance if the user declined the follow request
+                follow.delete()
+
+                # Update the original "follow_request" notification to "follow_decline"
+                original_notification.notification_type = 'follow_decline'
+                original_notification.save()
+
+                # Notify the user who declined the request via WebSocket (to apply necessary changes to their front-end)
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f"notifications_{following_user.id}",
+                    {
+                        "type": "notification_follow_request_action",
+                        "action": "decline",
+                        "unique_identifier": str(original_notification.id),
+                    }
+                )
+        except Exception as e:
+            return Response({"error": "An error occurred while processing the response to the follow request"},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         return Response({"message": "Follow request declined"}, status=status.HTTP_200_OK)
+    # action is not "accept" or "decline"
     else:
         return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -140,18 +169,26 @@ def unfollow_user(request, user_id):
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
+    # Set the follower user as the request user (user who is attempting to unfollow another user)
     follower_user = request.user
 
-    # Check if user is currently following this user
+    # Check if requesting user is currently following this user
     follow = Follow.objects.filter(follower=follower_user, following=following_user).first()
     if not follow:
         return Response({"error": "You are not following this user"}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        # Use a transaction to handle both unfollowing and deleting the associated notification
+        # Use a transaction to handle unfollowing, updating the counters, and deleting the associated notification
         with transaction.atomic():
             # Remove the follow relationship
             follow.delete()
+
+            # Decrement the num_followers counter for the user being unfollowed using F object
+            following_user.num_followers = F('num_followers') - 1
+            following_user.save()
+            # Decrement the num_following counter for the user who is unfollowing using F object
+            follower_user.num_following = F('num_following') - 1
+            follower_user.save()
 
             # Fetch the associated "follow_request" or "new_follower" notification
             notification = Notification.objects.filter(
@@ -161,7 +198,7 @@ def unfollow_user(request, user_id):
 
             # Check if the notification exists
             if notification:
-                notification_id = notification.id  # Store the ID for WebSocket use
+                notification_id = str(notification.id)  # Store the ID for WebSocket use
 
                 # Delete the associated notification
                 notification.delete()
@@ -178,11 +215,13 @@ def unfollow_user(request, user_id):
     except (DatabaseError, IntegrityError):
         return Response({"error": "An error occurred while unfollowing the user"},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response({"message": "You have unfollowed this user"}, status=status.HTTP_200_OK)
 
 
-# Endpoint: /api/follower_list/{user_id}
+# Endpoint: /api/follower_list/{user_id}/?page={}&page_size={}
 # API view to view a user's follower list
 # Note: we don't have to check if requesting user has access to this list since the user_profile
 #       API view in the user_views already checks for this access
@@ -193,16 +232,30 @@ def get_followers(request, user_id):
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Get a list of all the user's followers
-    followers = Follow.objects.filter(following=user).select_related('follower')
-    follower_users = [follow.follower for follow in followers]
+    # Set a default page size of 20 returned datasets per page
+    default_page_size = 20
+    # Utility function to get current page number and page size from the request's query parameters and calculate the pagination slicing indeces
+    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
+    if validation_response:
+        return validation_response
 
-    serializer = FollowSerializer(follower_users, many=True, context={'request': request})
+    try:
+        # Get a paginated list of the user's followers
+        followers = Follow.objects.filter(following=user).select_related('follower')[start_index:end_index]
+        follower_users = [follow.follower for follow in followers]
 
-    return Response(serializer.data, status=status.HTTP_200_OK)
+        serializer = FollowSerializer(follower_users, many=True, context={'request': request})
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except DatabaseError:
+        return Response({"error": "An error occurred while retrieving follower data"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        return Response({"error": "An unexpected error occurred: " + str(e)},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# Endpoint: /api/following_list/{user_id}
+# Endpoint: /api/following_list/{user_id}/?page={}&page_size={}
 # API view to view a user's following list
 @api_view(['GET'])
 def get_following(request, user_id):
@@ -211,10 +264,23 @@ def get_following(request, user_id):
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Get a list of all the user's that they follow
-    followings = Follow.objects.filter(follower=user).select_related('following')
-    following_users = [following.following for following in followings]
+    # Get the pagination slicing indeces
+    default_page_size = 20
+    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
+    if validation_response:
+        return validation_response
 
-    serializer = FollowSerializer(following_users, many=True, context={'request': request})
+    try:
+        # Get a paginated list of the user's that the requesting user follows
+        followings = Follow.objects.filter(follower=user).select_related('following')[start_index:end_index]
+        following_users = [following.following for following in followings]
 
-    return Response(serializer.data, status=status.HTTP_200_OK)
+        serializer = FollowSerializer(following_users, many=True, context={'request': request})
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except DatabaseError:
+        return Response({"error": "An error occurred while retrieving following data"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        return Response({"error": "An unexpected error occurred: " + str(e)},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)

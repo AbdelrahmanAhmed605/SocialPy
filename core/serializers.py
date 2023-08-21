@@ -7,29 +7,9 @@ from .models import User, Hashtag, Post, Comment, Follow, Message, Notification
 # JSON data will be converted to python data from API requests to be saved in Django model instances. (deserialization)
 
 class UserSerializer(serializers.ModelSerializer):
-    # Create new fields containing the number of followers, following, and posts for a user
-    num_followers = serializers.SerializerMethodField()
-    num_following = serializers.SerializerMethodField()
-    num_posts = serializers.SerializerMethodField()
-
-    # Function to count the number of followers for a specific user
-    # followers is a related_name field in the Follow model for the User field foreign key
-    def get_num_followers(self, obj):
-        return obj.follower.filter(follow_status='accepted').count()
-
-    # Function to count the number of following for a specific user
-    # following is a related_name field in the Follow model for the User field foreign key
-    def get_num_following(self, obj):
-        return obj.following.filter(follow_status='accepted').count()
-
-    # Function to count the number of posts for a specific user
-    # user_posts is a related_name field in the Post model for the User field foreign key
-    def get_num_posts(self, obj):
-        return obj.user_posts.count()
-
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'profile_picture', 'bio', 'contact_information', 'profile_privacy', 'num_followers', 'num_following', 'num_posts']
+        fields = '__all__'
 
 
 class HashtagSerializer(serializers.ModelSerializer):
@@ -45,29 +25,6 @@ class PostSerializer(serializers.ModelSerializer):
     # Custom field to indicate if the requesting user has liked the post
     liked_by_user = serializers.SerializerMethodField()
 
-    # Create new fields containing the number of likes and comments for a post
-    num_likes = serializers.SerializerMethodField()
-    num_comments = serializers.SerializerMethodField()
-
-    # Function to count the number of likes for a specific post
-    def get_num_likes(self, obj):
-        return obj.likes.count()
-
-    # Function to count the number of comments for a specific post
-    # post_comments is the related_name field in the Comment model for the Post field foreign key
-    def get_num_comments(self, obj):
-        return obj.post_comments.count()
-
-    # Function that takes a list of hashtag names and creates or retrieves corresponding Hashtag objects.
-    # It returns a list of Hashtag objects that are associated with the provided names.
-    def create_hashtags(self, hashtag_names):
-        hashtags = []  # Initialize an empty list to store the hashtag objects
-        for name in hashtag_names:
-            # Try to retrieve an existing hashtag with the given name, or create a new one
-            hashtag, created = Hashtag.objects.get_or_create(name=name)
-            hashtags.append(hashtag)  # Add the retrieved or newly created hashtag to the list
-        return hashtags  # Return the list of hashtag objects
-
     # Function that checks if a requesting user liked the post that is being retrieved
     # This will be used on the front end to provide indication to users if they liked a post or not
     def get_liked_by_user(self, post):
@@ -79,7 +36,7 @@ class PostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['user', 'content', 'media', 'visibility', 'hashtags', 'created_at', 'updated_at', 'likes', 'num_likes', 'num_comments', 'liked_by_user']
+        fields = ['user', 'content', 'media', 'visibility', 'hashtags', 'created_at', 'updated_at', 'like_count', 'comment_count', 'liked_by_user']
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -114,12 +71,12 @@ class FollowSerializer(serializers.ModelSerializer):
     requesting_user_follow_status = serializers.SerializerMethodField()
 
     # Function to get the follow status of the requesting user to the viewed user
-    def get_requesting_user_follow_status(self, user):
+    def get_requesting_user_follow_status(self, following_user):
         if 'request' in self.context:
             requesting_user = self.context['request'].user
             # Check if there is an authenticated requesting user
             if requesting_user.is_authenticated:
-                follow_instance = requesting_user.following.filter(id=user.id).first()
+                follow_instance = requesting_user.following.filter(id=following_user.id).first()
                 if follow_instance:
                     return follow_instance.follow_status  # return the follow status
         # If the requesting user is not authenticated, or we do not follow the user
@@ -127,7 +84,7 @@ class FollowSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'profile_picture', 'is_followed_by_requesting_user']
+        fields = ['username', 'profile_picture', 'requesting_user_follow_status']
 
 
 class MessageSerializer(serializers.ModelSerializer):

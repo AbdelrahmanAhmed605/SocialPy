@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     
     # Django REST framework
     'rest_framework',
+    'rest_framework.authtoken',
 
     # For WebSocket Support
     'channels',
@@ -86,10 +87,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'socialpy.wsgi.application'
 
+# ---------- WEBSOCKETS ----------
 # Use the Channels layer as the backend for Django's ASGI interface
 ASGI_APPLICATION = 'socialpy.routing.application'
 
-# Database
+# ---------- DATABASE ----------
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
@@ -103,9 +105,19 @@ DATABASES = {
     }
 }
 
+# ---------- DJANGO REST FRAMEWORK ----------
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+}
+
+
 # Use a custom user model for authentication.
 # The 'core.User' refers to the custom user model defined in the 'core' app.
 AUTH_USER_MODEL = 'core.User'
+
+# ---------- AWS ----------
 
 # Set the AWS credentials and region
 AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
@@ -133,6 +145,8 @@ MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
 
 # To serve static files directly from S3
 STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
+
+# ---------- CACHING ----------
 
 # Configure Redis for the applications caching
 CACHES = {
