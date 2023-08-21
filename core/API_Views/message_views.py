@@ -3,9 +3,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
-# The Q object helps build complex queries using logical operators to filter database records based on multiple conditions
-from django.db.models import Q
-from django.db.models import Max
+# Q object helps build complex queries using logical operators to filter database records based on multiple conditions
+from django.db.models import Q, Max
+# Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
+from django.db import transaction
 from django.core.exceptions import PermissionDenied
 
 from asgiref.sync import async_to_sync
@@ -13,6 +14,7 @@ from channels.layers import get_channel_layer
 
 from core.models import Message, User
 from core.serializers import MessageSerializer, UserSerializer
+from api_utility_functions import get_pagination_indeces
 
 
 # Endpoint: api/messages/send/{receiver_id}
@@ -37,23 +39,29 @@ def send_message(request, receiver_id):
     if sender == receiver:
         return Response({"error": "Cannot send message to yourself"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Creates the message
-    message = Message(sender=sender, receiver=receiver, content=content, is_delivered=True)
-    message.save()
-
     # Create a unique room group name using both sender and receiver IDs
     room_group_name = f"group_{min(sender.id, receiver.id)}_{max(sender.id, receiver.id)}"
 
-    # Notify WebSocket group about the new message
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        room_group_name,
-        {
-            "type": "message",
-            "content": content,
-            "unique_identifier": str(message.id)  # Use message's ID as unique_identifier
-        }
-    )
+    try:
+        # Use an atomic transaction for creating the Message instance, and informing the WebSocket of the new message
+        with transaction.atomic():
+            # Creates the message
+            message = Message(sender=sender, receiver=receiver, content=content, is_delivered=True)
+            message.save()
+
+            # Notify WebSocket group about the new message
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                room_group_name,
+                {
+                    "type": "message",
+                    "content": content,
+                    "unique_identifier": str(message.id)  # Use message's ID as unique_identifier
+                }
+            )
+    except Exception as e:
+        return Response({"error": "An error occurred while sending the message"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     serializer = MessageSerializer(message)
 
@@ -81,18 +89,24 @@ def delete_message(request, message_id):
     # Determine the appropriate room_group_name based on sender and receiver IDs
     room_group_name = f"group_{min(message.sender.id, message.receiver.id)}_{max(message.sender.id, message.receiver.id)}"
 
-    # Delete the message
-    message.delete()
+    try:
+        # Use an atomic transaction for deleting the Message instance, and informing the WebSocket of the deletion
+        with transaction.atomic():
+            # Delete the message
+            message.delete()
 
-    # Notify WebSocket consumer to remove the message from UI
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        room_group_name,
-        {
-            "type": "remove_message",
-            "unique_identifier": unique_identifier,
-        }
-    )
+            # Notify WebSocket consumer to remove the message from UI
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                room_group_name,
+                {
+                    "type": "remove_message",
+                    "unique_identifier": unique_identifier,
+                }
+            )
+    except Exception as e:
+        return Response({"error": "An error occurred while unsending the message"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response({"message": "Message deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
@@ -108,15 +122,12 @@ def get_conversation(request, user_id):
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Get the current page number from the request's query parameters
-    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
-
-    # Get the page size from the request's query parameters
-    page_size = int(request.query_params.get('page_size', 20))  # Default page size is 20
-
-    # Calculate the starting and ending index for slicing
-    start_index = (page_number - 1) * page_size
-    end_index = start_index + page_size
+    # Set a default page size of 20 returned datasets per page
+    default_page_size = 20
+    # Utility function to get current page number and page size from the request's query parameters and calculate the pagination slicing indeces
+    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
+    if validation_response:
+        return validation_response
 
     # Get paginated list of read messages between the requesting user and the receiver
     read_messages = Message.objects.filter(
@@ -147,18 +158,14 @@ def get_conversation(request, user_id):
 def get_and_search_conversation_partners(request):
     username = request.query_params.get('username')  # Get the username from the search query if applied
 
-    # Get the current page number from the request's query parameters
-    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
-
-    # Get the page size from the request's query parameters
-    page_size = int(request.query_params.get('page_size', 20))  # Default page size is 20
-
-    # Calculate the starting and ending index for slicing
-    start_index = (page_number - 1) * page_size
-    end_index = start_index + page_size
+    # Get the pagination slicing indeces
+    default_page_size = 20
+    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
+    if validation_response:
+        return validation_response
 
     # Check if a search query was applied to view for specific users
-    # The last_interaction annotated field allows us to order the Users by their most recent interaction with the requesting user
+    # last_interaction annotated field used to order the Users by their most recent interaction with the requesting user
     if username:
         # Filter conversation partners by username query
         conversation_partners = User.objects.filter(

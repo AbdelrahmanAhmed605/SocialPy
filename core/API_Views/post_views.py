@@ -1,17 +1,20 @@
-# lets you directly manipulate database fields within database queries, leading to more efficient operations
-from django.db.models import F
-
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
+# lets you directly manipulate database fields within database queries, leading to more efficient operations
+from django.db.models import F
+# Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
+from django.db import transaction
+
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 from core.models import Post, Comment, Notification, Hashtag
 from core.serializers import PostSerializer, HashtagSerializer, FollowSerializer
+from api_utility_functions import get_pagination_indeces
 
 
 # Endpoint: List Posts: GET /api/posts/
@@ -99,35 +102,43 @@ def like_post(request, post_id):
     if request.user in post.likes.all():
         return Response({"error": "You already liked this post"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Increment the counter for the like count
-    post.like_count = F('like_count') + 1
-    post.save()  # Save the post to update the counter
+    try:
+        # Use an atomic transaction for adding the users like to the post instance, updating the like counter,
+        # creating the like notification, and informing the WebSocket of the like
+        with transaction.atomic():
+            # Create the like relationship between the requesting user and the post
+            post.likes.add(request.user)
 
-    post.likes.add(request.user)
+            # Increment the counter for the like count
+            post.like_count = F('like_count') + 1
+            post.save()  # Save the post to update the counter
 
-    # Create a new_like notification for the post author
-    notification = Notification.objects.create(
-        recipient=post.user,
-        sender=request.user,
-        notification_type='new_like',
-        notification_post=post
-    )
+            # Create a new_like notification for the post author
+            notification = Notification.objects.create(
+                recipient=post.user,
+                sender=request.user,
+                notification_type='new_like',
+                notification_post=post
+            )
 
-    # Notify the post author via WebSocket about the new like
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        f"notifications_{post.user.id}",
-        {
-            "type": "notification",
-            "unique_identifier": str(notification.id),
-            "notification_type": "new_like",
-            "recipient": str(post.user.id),
-            "sender": str(request.user.id),
-            "message": f"{request.user.username} liked your post",
-            "sender_profile_picture_url": request.user.profile_picture.url if request.user.profile_picture else None,
-            "post_media_url": post.media.url if post.media else None,
-        }
-    )
+            # Notify the post author via WebSocket about the new like
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f"notifications_{post.user.id}",
+                {
+                    "type": "notification",
+                    "unique_identifier": str(notification.id),
+                    "notification_type": "new_like",
+                    "recipient": str(post.user.id),
+                    "sender": str(request.user.id),
+                    "message": f"{request.user.username} liked your post",
+                    "sender_profile_picture_url": request.user.profile_picture.url if request.user.profile_picture else None,
+                    "post_media_url": post.media.url if post.media else None,
+                }
+            )
+    except Exception as e:
+        return Response({"error": "An error occurred while liking the post"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response({"message": "Post liked successfully"}, status=status.HTTP_200_OK)
 
@@ -145,35 +156,42 @@ def unlike_post(request, post_id):
     if request.user not in post.likes.all():
         return Response({"error": "You haven't liked this post"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Decrement the counter for the like count
-    post.like_count = F('like_count') - 1
-    post.save()  # Save the post to update the counter
+    try:
+        # Use an atomic transaction for removing the users like from the post instance, updating the like counter,
+        # deleting the like notification, and informing the WebSocket of the unlike
+        with transaction.atomic():
+            # Remove the like
+            post.likes.remove(request.user)
 
-    # Remove the like
-    post.likes.remove(request.user)
+            # Decrement the counter for the like count
+            post.like_count = F('like_count') - 1
+            post.save()  # Save the post to update the counter
 
-    # Find the corresponding 'new_like' notification
-    notification = Notification.objects.filter(
-        recipient=post.user,
-        sender=request.user,
-        notification_type='new_like',
-        notification_post=post
-    ).first()
+            # Find the corresponding 'new_like' notification
+            notification = Notification.objects.filter(
+                recipient=post.user,
+                sender=request.user,
+                notification_type='new_like',
+                notification_post=post
+            ).first()
 
-    # Check if the notification exists
-    if notification:
-        notification_id = str(notification.id)  # Store the ID for WebSocket use
-        notification.delete()  # Delete the notification
+            # Check if the notification exists
+            if notification:
+                notification_id = str(notification.id)  # Store the ID for WebSocket use
+                notification.delete()  # Delete the notification
 
-        # Remove the notification for the post author via WebSocket
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f"notifications_{post.user.id}",
-            {
-                "type": "remove_notification",
-                "unique_identifier": notification_id
-            }
-        )
+                # Remove the notification for the post author via WebSocket
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f"notifications_{post.user.id}",
+                    {
+                        "type": "remove_notification",
+                        "unique_identifier": notification_id
+                    }
+                )
+    except Exception as e:
+        return Response({"error": "An error occurred while liking the post"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response({"message": "Post unliked successfully"}, status=status.HTTP_200_OK)
 
@@ -187,15 +205,12 @@ def suggest_hashtags(request):
     if not hashtag:
         return Response({"error": "Please provide a hashtag query parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Get the current page number from the request's query parameters
-    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
-
-    # Get the page size from the request's query parameters
-    page_size = int(request.query_params.get('page_size', 5))  # Default page size is 5
-
-    # Calculate the starting and ending index for slicing
-    start_index = (page_number - 1) * page_size
-    end_index = start_index + page_size
+    # Set a default page size of 5 returned datasets per page
+    default_page_size = 5
+    # Utility function to get current page number and page size from the request's query parameters and calculate the pagination slicing indeces
+    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
+    if validation_response:
+        return validation_response
 
     # Search for hashtag names that are similar to the provided search query
     suggested_hashtags = Hashtag.objects.filter(name__icontains=hashtag)[start_index:end_index]
@@ -208,21 +223,17 @@ def suggest_hashtags(request):
 # Endpoint: /api/hashtag/posts/?hashtag={}&page={}&page_size={}
 # API view to allow users to search for posts by a specific hashtag
 @api_view(['GET'])
-def search_hashtags(request):
+def search_hashtag_posts(request):
     hashtag = request.query_params.get('hashtag')  # Get the search query from query parameters
 
     if not hashtag:
         return Response({"error": "Please provide a hashtag query parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Get the current page number from the request's query parameters
-    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
-
-    # Get the page size from the request's query parameters
-    page_size = int(request.query_params.get('page_size', 20))  # Default page size is 20
-
-    # Calculate the starting and ending index for slicing
-    start_index = (page_number - 1) * page_size
-    end_index = start_index + page_size
+    # Get the pagination slicing indeces
+    default_page_size = 20
+    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
+    if validation_response:
+        return validation_response
 
     # Search for paginated posts with the specified hashtag and a public visibility
     matched_posts = Post.objects.filter(hashtags__name=hashtag, visibility='public')[start_index:end_index]
@@ -236,15 +247,11 @@ def search_hashtags(request):
 # API view to allow users to have an explore page (see posts created by public accounts)
 @api_view(['GET'])
 def explore_page(request):
-    # Get the current page number from the request's query parameters
-    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
-
-    # Get the page size from the request's query parameters
-    page_size = int(request.query_params.get('page_size', 20))  # Default page size is 20
-
-    # Calculate the starting and ending index for slicing
-    start_index = (page_number - 1) * page_size
-    end_index = start_index + page_size
+    # Get the pagination slicing indeces
+    default_page_size = 20
+    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
+    if validation_response:
+        return validation_response
 
     # If the user is authenticated, then show paginated posts of public users they do not follow
     if request.user.is_authenticated:
@@ -269,15 +276,11 @@ def post_likers(request, post_id):
     except Post.DoesNotExist:
         return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Get the current page number from the request's query parameters
-    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
-
-    # Get the page size from the request's query parameters
-    page_size = int(request.query_params.get('page_size', 20))  # Default page size is 20
-
-    # Calculate the starting and ending index for slicing
-    start_index = (page_number - 1) * page_size
-    end_index = start_index + page_size
+    # Get the pagination slicing indeces
+    default_page_size = 20
+    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
+    if validation_response:
+        return validation_response
 
     users = post.likes.all()[start_index:end_index]  # Retrieve all users who liked the post
 

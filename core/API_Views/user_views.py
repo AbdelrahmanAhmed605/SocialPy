@@ -7,6 +7,7 @@ from rest_framework.authtoken.models import Token
 
 from core.models import User, Post
 from core.serializers import UserSerializer, PostSerializer
+from api_utility_functions import get_pagination_indeces
 
 
 # Endpoint: List Users: GET /api/users/
@@ -114,15 +115,12 @@ def user_logout(request):
 def user_feed(request):
     following_users = request.user.following.filter(follow_status='accepted')  # Obtains all the users the requesting user is following
 
-    # Get the current page number from the request's query parameters
-    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
-
-    # Get the page size from the request's query parameters
-    page_size = int(request.query_params.get('page_size', 20))  # Default page size is 20
-
-    # Calculate the starting and ending index for slicing
-    start_index = (page_number - 1) * page_size
-    end_index = start_index + page_size
+    # Set a default page size of 20 returned datasets per page
+    default_page_size = 20
+    # Utility function to get current page number and page size from the request's query parameters and calculate the pagination slicing indeces
+    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
+    if validation_response:
+        return validation_response
 
     # fetch the posts from the users in following_users
     feed_posts = Post.objects.filter(user__in=following_users)[start_index:end_index]
@@ -140,73 +138,68 @@ def user_profile(request, user_id):
     try:
         # Get user by username
         user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Get the current page number from the request's query parameters
-        page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
+    # Get the pagination slicing indeces
+    default_page_size = 20
+    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
+    if validation_response:
+        return validation_response
 
-        # Get the page size from the request's query parameters
-        page_size = int(request.query_params.get('page_size', 20))  # Default page size is 20
-
-        # Calculate the starting and ending index for slicing
-        start_index = (page_number - 1) * page_size
-        end_index = start_index + page_size
-
-        # Check if there is a requesting user and get their follow status to the viewed user
-        if request.user.is_authenticated:
-            follow_instance = request.user.following.filter(id=user_id).first()
-            if follow_instance:
-                follow_status = follow_instance.follow_status
-            else:
-                follow_status = 'False'
-        # The else means that there is no authenticated requesting user (not logged in or no account)
+    # Check if there is a requesting user and get their follow status to the viewed user
+    if request.user.is_authenticated:
+        follow_instance = request.user.following.filter(id=user_id).first()
+        if follow_instance:
+            follow_status = follow_instance.follow_status
         else:
             follow_status = False
+    # The else means that there is no authenticated requesting user (not logged in or no account)
+    else:
+        follow_status = False
 
-        # Check if the requesting user is attempting to view their own account
-        if request.user == user:
-            follow_status = None  # Indicate that the user is viewing their own account
+    # Check if the requesting user is attempting to view their own account
+    if request.user == user:
+        follow_status = None  # Use None to indicate that the user is viewing their own account
 
-        # Check if the requesting user is attempting to view a private user that they don't follow
-        elif user.profile_privacy == 'private' and (follow_status is False or follow_status == 'pending'):
-            response_data = {
-                'username': user.username,
-                'profile_picture': user.profile_picture.url if user.profile_picture else None,
-                'bio': user.bio,
-                'contact_information': user.contact_information,
-                'follow_status': follow_status,
-                'can_view': False,  # Indicate we cannot view the user's profile
-                'posts': None,  # Indicate that the user has no access to posts
-                'num_followers': user.num_followers,  # Use the counter field from the User model
-                'num_following': user.num_following,  # Use the counter field from the User model
-                'num_posts': user.num_posts,  # Use the counter field from the User model
-            }
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        # If we are in this section below, it means the above elif statement didn't run, meaning we are
-        # attempting to view a user that is public or private, but we follow them
-
-        # Get a paginated list of the user's posts for users the requesting user has access to
-        users_posts = Post.objects.filter(user=user)[start_index:end_index]
-        serializer = PostSerializer(users_posts, many=True)
-
-        # Add the follow status and additional information to the response data
+    # Check if the requesting user is attempting to view a private user that they don't follow
+    elif user.profile_privacy == 'private' and (follow_status is False or follow_status == 'pending'):
         response_data = {
             'username': user.username,
             'profile_picture': user.profile_picture.url if user.profile_picture else None,
             'bio': user.bio,
             'contact_information': user.contact_information,
             'follow_status': follow_status,
-            'can_view': True,  # indicate we can view the user's profile
-            'posts': serializer.data,
+            'can_view': False,  # Indicate we cannot view the user's profile
+            'posts': None,  # Indicate that the user has no access to posts
             'num_followers': user.num_followers,  # Use the counter field from the User model
             'num_following': user.num_following,  # Use the counter field from the User model
             'num_posts': user.num_posts,  # Use the counter field from the User model
         }
-
         return Response(response_data, status=status.HTTP_200_OK)
 
-    except User.DoesNotExist:
-        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+    # If we are in this section below, it means the above elif statement didn't run, meaning we are
+    # attempting to view a user that is public or private, but we follow them
+
+    # Get a paginated list of the user's posts for users the requesting user has access to
+    users_posts = Post.objects.filter(user=user)[start_index:end_index]
+    serializer = PostSerializer(users_posts, many=True)
+
+    # Add the follow status and additional information to the response data
+    response_data = {
+        'username': user.username,
+        'profile_picture': user.profile_picture.url if user.profile_picture else None,
+        'bio': user.bio,
+        'contact_information': user.contact_information,
+        'follow_status': follow_status,
+        'can_view': True,  # indicate we can view the user's profile
+        'posts': serializer.data,
+        'num_followers': user.num_followers,  # Use the counter field from the User model
+        'num_following': user.num_following,  # Use the counter field from the User model
+        'num_posts': user.num_posts,  # Use the counter field from the User model
+    }
+
+    return Response(response_data, status=status.HTTP_200_OK)
 
 
 # Endpoint: /api/users/change_profile_privacy/
@@ -244,15 +237,11 @@ def search_users(request):
     if not username:
         return Response({"error": "Please provide a username query parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Get the current page number from the request's query parameters
-    page_number = int(request.query_params.get('page', 1))  # Defaults to the first page
-
-    # Get the page size from the request's query parameters
-    page_size = int(request.query_params.get('page_size', 5))  # Default page size is 5
-
-    # Calculate the starting and ending index for slicing
-    start_index = (page_number - 1) * page_size
-    end_index = start_index + page_size
+    # Set a default page size of 5 returned datasets per page
+    default_page_size = 5
+    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
+    if validation_response:
+        return validation_response
 
     # Search for users based on username
     matched_users = User.objects.filter(username__icontains=username)[start_index:end_index]
