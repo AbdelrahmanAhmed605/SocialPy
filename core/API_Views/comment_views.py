@@ -14,7 +14,7 @@ from asgiref.sync import async_to_sync
 
 from core.models import Post, Comment, Notification
 from core.serializers import CommentSerializer
-from api_utility_functions import get_pagination_indeces
+from .api_utility_functions import get_pagination_indeces
 
 
 # Endpoint: /api/comment/post/{post_id}

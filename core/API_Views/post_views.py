@@ -14,7 +14,7 @@ from asgiref.sync import async_to_sync
 
 from core.models import Post, Comment, Notification, Hashtag
 from core.serializers import PostSerializer, HashtagSerializer, FollowSerializer
-from api_utility_functions import get_pagination_indeces
+from .api_utility_functions import get_pagination_indeces
 
 
 # Endpoint: List Posts: GET /api/posts/

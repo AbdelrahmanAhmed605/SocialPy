@@ -14,7 +14,7 @@ from channels.layers import get_channel_layer
 
 from core.models import Message, User
 from core.serializers import MessageSerializer, UserSerializer
-from api_utility_functions import get_pagination_indeces
+from .api_utility_functions import get_pagination_indeces
 
 
 # Endpoint: api/messages/send/{receiver_id}

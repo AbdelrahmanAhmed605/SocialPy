@@ -15,7 +15,7 @@ from asgiref.sync import async_to_sync
 
 from core.models import User, Follow, Notification
 from core.serializers import FollowSerializer
-from api_utility_functions import get_pagination_indeces, notify_user, update_follow_counters
+from .api_utility_functions import get_pagination_indeces, notify_user, update_follow_counters
 
 
 # Endpoint: /api/follow/user/{user_id}
@@ -69,7 +69,7 @@ def follow_user(request, user_id):
         return Response({"message": "You are now following this user"}, status=status.HTTP_201_CREATED)
 
 
-# Endpoint: /api/follow_request/user/{user_id}
+# Endpoint: /api/respond_follow_request/user/{user_id}
 # API view to allow a private user to accept a follow request
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

@@ -7,7 +7,7 @@ from rest_framework.authtoken.models import Token
 
 from core.models import User, Post
 from core.serializers import UserSerializer, PostSerializer
-from api_utility_functions import get_pagination_indeces
+from .api_utility_functions import get_pagination_indeces
 
 
 # Endpoint: List Users: GET /api/users/
@@ -202,7 +202,7 @@ def user_profile(request, user_id):
     return Response(response_data, status=status.HTTP_200_OK)
 
 
-# Endpoint: /api/users/change_profile_privacy/
+# Endpoint: /api/user/change_profile_privacy/
 # API view to change a user's profile privacy setting
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
