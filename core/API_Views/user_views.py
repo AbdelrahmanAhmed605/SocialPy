@@ -7,6 +7,7 @@ from rest_framework.authtoken.models import Token
 
 from core.models import User, Post
 from core.serializers import UserSerializer, PostSerializer
+from core.Custom_Permission_Classes.checkOwner import IsOwnerOrReadOnly
 from .api_utility_functions import get_pagination_indeces
 
 
@@ -32,12 +33,16 @@ class UserListCreateView(generics.ListCreateAPIView):
         if User.objects.filter(email=email).exists():
             raise ValidationError("Email already exists.")
 
-        # Save the new user to the database
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
+        # Obtain the password from the validated data to be hashed
+        password = serializer.validated_data['password']
+        # Create the user instance using all fields from request data
+        user = User(**serializer.validated_data)
+        user.set_password(password)  # Hash the password
+        user.save()
 
-        # Get the user instance after creation
-        user = serializer.instance
+        # Save the serializer after creating the user
+        serializer.instance = user
+        headers = self.get_success_headers(serializer.data)
 
         # Generate or get the token for the user
         token, _ = Token.objects.get_or_create(user=user)
@@ -56,7 +61,7 @@ class UserListCreateView(generics.ListCreateAPIView):
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]  # Allow only authenticated users to make changes to their account
+    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]  # Allow only authenticated users to make changes to their own account
 
     # Overriding perform_update method to perform custom logic
     def perform_update(self, serializer):
@@ -113,7 +118,8 @@ def user_logout(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def user_feed(request):
-    following_users = request.user.following.filter(follow_status='accepted')  # Obtains all the users the requesting user is following
+    # Obtains all the users the requesting user is following
+    following_users = User.objects.filter(following__follower=request.user, following__follow_status='accepted')
 
     # Set a default page size of 20 returned datasets per page
     default_page_size = 20
@@ -221,14 +227,14 @@ def change_profile_privacy(request):
     # Update visibility of the user's posts
     if new_privacy != old_privacy:
         if new_privacy == 'private':
-            user.posts.filter(visibility='public').update(visibility='private')
+            user.user_posts.filter(visibility='public').update(visibility='private')
         else:
-            user.posts.filter(visibility='private').update(visibility='public')
+            user.user_posts.filter(visibility='private').update(visibility='public')
 
     return Response({'success': 'Profile privacy updated successfully'}, status=status.HTTP_200_OK)
 
 
-# Endpoint: /api/search/users/?page={}&page_size={}
+# Endpoint: /api/search/users/?username={}&page={}&page_size={}
 # API view to search for users
 @api_view(['GET'])
 def search_users(request):
