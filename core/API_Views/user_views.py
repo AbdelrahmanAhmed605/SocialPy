@@ -6,7 +6,7 @@ from rest_framework import status, generics
 from rest_framework.authtoken.models import Token
 
 from core.models import User, Post
-from core.serializers import UserSerializer, PostSerializer
+from core.serializers import UserSerializer, PostSerializer, FollowSerializer
 from core.Custom_Permission_Classes.checkOwner import IsOwnerOrReadOnly
 from .api_utility_functions import get_pagination_indeces
 
@@ -252,6 +252,6 @@ def search_users(request):
     # Search for users based on username
     matched_users = User.objects.filter(username__icontains=username)[start_index:end_index]
 
-    serializer = UserSerializer(matched_users, many=True)
+    serializer = FollowSerializer(matched_users, many=True)
 
     return Response(serializer.data, status=status.HTTP_200_OK)
