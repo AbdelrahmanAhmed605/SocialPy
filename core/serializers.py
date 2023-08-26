@@ -9,7 +9,7 @@ from .models import User, Hashtag, Post, Comment, Follow, Message, Notification
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = '__all__'
+        exclude = ['password']  # Exclude the password field from the API response
 
 
 class HashtagSerializer(serializers.ModelSerializer):
@@ -19,9 +19,6 @@ class HashtagSerializer(serializers.ModelSerializer):
 
 
 class PostSerializer(serializers.ModelSerializer):
-    # Define hashtags field as a list of strings, each with a max length of 50 characters
-    hashtags = serializers.ListField(child=serializers.CharField(max_length=50))
-
     # Custom field to indicate if the requesting user has liked the post
     liked_by_user = serializers.SerializerMethodField()
 
@@ -36,7 +33,7 @@ class PostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['user', 'content', 'media', 'visibility', 'hashtags', 'created_at', 'updated_at', 'like_count', 'comment_count', 'liked_by_user']
+        fields = ['id', 'user', 'content', 'media', 'visibility', 'hashtags', 'created_at', 'updated_at', 'like_count', 'comment_count', 'liked_by_user']
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -63,7 +60,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ['user', 'post', 'content', 'created_at', 'updated_at', 'can_edit', 'can_delete']
+        fields = ['id', 'user', 'post', 'content', 'created_at', 'updated_at', 'can_edit', 'can_delete']
 
 
 class FollowSerializer(serializers.ModelSerializer):
@@ -84,7 +81,7 @@ class FollowSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'profile_picture', 'requesting_user_follow_status']
+        fields = ['id', 'username', 'profile_picture', 'requesting_user_follow_status']
 
 
 class MessageSerializer(serializers.ModelSerializer):
