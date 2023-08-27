@@ -60,7 +60,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ['id', 'user', 'post', 'content', 'created_at', 'updated_at', 'can_edit', 'can_delete']
+        fields = ['id', 'user', 'post', 'content', 'created_at', 'can_edit', 'can_delete']
 
 
 class FollowSerializer(serializers.ModelSerializer):

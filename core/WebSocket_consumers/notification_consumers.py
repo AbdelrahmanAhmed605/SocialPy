@@ -26,30 +26,14 @@ class NotificationConsumer(AsyncWebsocketConsumer):
 
     # Establishes a WebSocket connection for the user's notifications.
     async def connect(self):
-        # Get headers from the connection's scope
-        headers = dict(self.scope["headers"])
+        # Get the receiver of the WebSocket Notifications from the url
+        user = self.scope["url_route"]["kwargs"]["user_id"]
 
-        # If user is not authenticated, send an authentication required message and close the connection
-        if b"authorization" not in headers:
-            await self.accept()
-            await self.send(text_data=json.dumps({
-                "type": "authentication_required",
-                "message": "Authentication is required to access notifications."
-            }))
-            await self.close()
-            return
-
-        # Extract the token from the Authorization header and get the user associated with the token
-        token = headers[b"authorization"].decode("utf-8").split()[1]
-        user = await self.get_user_by_token(token)
-        if user is None:
-            await self.close()
-            return
         # Store the authenticated user's id to be used in the mark_notification_as_read function
-        self.auth_userId = user.id
+        self.auth_userId = user
 
         # Create a notification group for the user and add it to the channel layer
-        self.notification_group = f"notifications_{user.id}"
+        self.notification_group = f"notifications_{user}"
         await self.channel_layer.group_add(
             self.notification_group,
             self.channel_name
@@ -82,7 +66,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             pass
 
     # Sends a new notification message to the connected user.
-    async def notify_notification(self, event):
+    async def core_notification(self, event):
         unique_identifier = event["unique_identifier"]  # notification's id
         message = event["message"]  # notification message
         notification_type = event["notification_type"]  # type of notification
@@ -127,6 +111,6 @@ class NotificationConsumer(AsyncWebsocketConsumer):
 
         # Send removal instruction to the user's WebSocket
         await self.send(text_data=json.dumps({
-            "type": "remove_notification",
+            "type": "remove.notification",
             "unique_identifier": unique_identifier,
         }))

@@ -49,7 +49,7 @@ def notify_user(notification_recipient, notification_sender, notification_type, 
         async_to_sync(channel_layer.group_send)(
             f"notifications_{notification_recipient.id}",
             {
-                "type": "notification",
+                "type": "core.notification",
                 "unique_identifier": str(notification.id),
                 "notification_type": notification_type,
                 "recipient": str(notification_recipient.id),

@@ -38,7 +38,7 @@ def create_comment(request, post_id):
         with transaction.atomic():
             # Create comment for the post
             comment = Comment.objects.create(user=request.user, post=post, content=content)
-            serializer = CommentSerializer(comment)
+            serializer = CommentSerializer(comment, context={'request': request})
 
             # Increment the counter for the comment count
             post.comment_count = F('comment_count') + 1
@@ -58,7 +58,7 @@ def create_comment(request, post_id):
             async_to_sync(channel_layer.group_send)(
                 f"notifications_{post.user.id}",
                 {
-                    "type": "notification",
+                    "type": "core.notification",
                     "unique_identifier": str(notification.id),
                     "notification_type": "new_comment",
                     "recipient": str(post.user.id),
@@ -93,19 +93,17 @@ def delete_comment(request, comment_id):
         # Use an atomic transaction for deleting the Comment instance, updating the comment counter,
         # deleting the comment notification, and informing the WebSocket of the deletion
         with transaction.atomic():
-            comment.delete()
-
             # Decrement the counter for the comment count
             comment.post.comment_count = F('comment_count') - 1
             comment.post.save()  # Save the post to update the counter
 
             # Fetch the associated 'new_comment' notification
             notification = Notification.objects.filter(
-                recipient=comment.post.user,
-                sender=request.user,
-                notification_type='new_comment',
-                notification_post=comment.post
+                notification_comment=comment
             ).first()
+
+            # Delete the comment
+            comment.delete()
 
             # Check if the notification exists
             if notification:
@@ -145,7 +143,7 @@ def get_post_comments(request, post_id):
         return validation_response
 
     # Access comments for the specified post using the related_name
-    comments = post.post_comments[start_index:end_index]
+    comments = post.post_comments.all()[start_index:end_index]
     serializer = CommentSerializer(comments, many=True, context={'request': request})
 
     return Response(serializer.data, status=status.HTTP_200_OK)
