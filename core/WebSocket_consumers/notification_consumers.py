@@ -16,14 +16,6 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         except Notification.DoesNotExist:
             return None
 
-    # Retrieve a user from the database by their authentication token.
-    @database_sync_to_async
-    def get_user_by_token(self, token):
-        try:
-            return User.objects.get(auth_token=token)
-        except User.DoesNotExist:
-            return None
-
     # Establishes a WebSocket connection for the user's notifications.
     async def connect(self):
         # Get the receiver of the WebSocket Notifications from the url
