@@ -3,6 +3,7 @@ from rest_framework import generics, status, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser
 
 # Q object helps build complex queries using logical operators to filter database records based on multiple conditions
 from django.db.models import Q
@@ -27,6 +28,7 @@ class PostListCreateView(generics.ListCreateAPIView):
     queryset = Post.objects.all()  # Retrieves all the users from the database
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]  # Only authenticated users can create posts
+    parser_classes = [MultiPartParser]
 
     # Customize the serializer data for POST requests by adding the authenticated user's primary key
     def get_serializer(self, *args, **kwargs):
@@ -37,7 +39,13 @@ class PostListCreateView(generics.ListCreateAPIView):
 
     # Custom logic for creating a post
     def create(self, request, *args, **kwargs):
-        hashtag_names = request.data.pop('hashtags', [])  # Extract hashtag names from validated data
+        hashtag_names = []
+        index = 0
+        while f'hashtags_{index}' in request.data:
+            hashtag_name = request.data[f'hashtags_{index}']
+            hashtag_names.append(hashtag_name)
+            index += 1
+
         # Remove empty hashtags from the data and strip whitespaces from non-empty hashtags
         cleaned_hashtags = [tag.strip() for tag in hashtag_names if tag.strip()]
         # create_hashtags is a utility function that retrieves or creates provided hashtags (to ensure no duplicate hashtags are made)
@@ -46,7 +54,7 @@ class PostListCreateView(generics.ListCreateAPIView):
         request.data.setlist('hashtags', hashtag_ids)
 
         # Check the requesting user's profile_privacy
-        user_profile_privacy = self.request.user.profile_privacy
+        user_profile_privacy = request.user.profile_privacy
         # Set the visibility based on user's profile_privacy (it is already set to public by default)
         if user_profile_privacy == 'private':
             request.data['visibility'] = 'private'
@@ -71,6 +79,7 @@ class PostDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser]
 
     # Override the serializer context to include the request object
     # This is done due to custom logic in the PostSerializer that requires the request data (get_liked_by_user function)
@@ -98,12 +107,25 @@ class PostDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
         if instance.user != self.request.user:
             raise PermissionDenied("You don't have permission to update this post.")
 
+        old_media = instance.media
         serializer = self.get_serializer(instance, data=request.data, partial=True)
 
-        if 'hashtags' in request.data:
-            cleaned_hashtags = [tag.strip() for tag in request.data['hashtags']]
+        hashtag_names = []
+        index = 0
+        while f'hashtags_{index}' in request.data:
+            hashtag_name = request.data[f'hashtags_{index}']
+            hashtag_names.append(hashtag_name)
+            index += 1
+
+        if hashtag_names:
+            cleaned_hashtags = [tag.strip() for tag in hashtag_names]
             hashtag_ids = create_hashtags(cleaned_hashtags)
             request.data['hashtags'] = hashtag_ids
+
+        # Delete the old media from the AWS S3 bucket if the user is updating it
+        new_media = serializer.validated_data.get('media')
+        if new_media and old_media:
+            default_storage.delete(old_media.name)
 
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
@@ -290,7 +312,7 @@ def explore_page(request):
 
     # If the user is authenticated, then show paginated posts of public users they do not follow
     if request.user.is_authenticated:
-        following_users = User.objects.filter(following__follower=request.user, following__follow_status='accepted')
+        following_users = User.objects.filter(follower__follower=request.user, follower__follow_status='accepted')
         explore_posts = Post.objects.filter(visibility='public').exclude(
             Q(user__in=following_users) | Q(user=request.user)
         )[start_index:end_index]
