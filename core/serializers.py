@@ -9,7 +9,13 @@ from .models import User, Hashtag, Post, Comment, Follow, Message, Notification
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        exclude = ['password']  # Exclude the password field from the API response
+        fields = '__all__'
+
+    # Exclude the password field from the API response
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data.pop('password')  # Remove the password field from the serialized data
+        return data
 
 
 class HashtagSerializer(serializers.ModelSerializer):
@@ -73,6 +79,8 @@ class FollowSerializer(serializers.ModelSerializer):
             requesting_user = self.context['request'].user
             # Check if there is an authenticated requesting user
             if requesting_user.is_authenticated:
+                if requesting_user == following_user:
+                    return "self"
                 follow_instance = requesting_user.following.filter(id=following_user.id).first()
                 if follow_instance:
                     return follow_instance.follow_status  # return the follow status

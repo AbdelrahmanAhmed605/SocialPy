@@ -4,11 +4,18 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework import status, generics
 from rest_framework.authtoken.models import Token
+from rest_framework.parsers import MultiPartParser
 
-from core.models import User, Post
+from django.db import transaction
+from django.core.files.storage import default_storage
+
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
+from core.models import User, Post, Follow, Notification
 from core.serializers import UserSerializer, PostSerializer, FollowSerializer
 from core.Custom_Permission_Classes.checkOwner import IsOwnerOrReadOnly
-from .api_utility_functions import get_pagination_indeces
+from .api_utility_functions import get_pagination_indeces, update_follow_counters, notify_user
 
 
 # Endpoint: List Users: GET /api/users/
@@ -18,6 +25,7 @@ class UserListCreateView(generics.ListCreateAPIView):
     queryset = User.objects.all()  # Retrieves all the users from the database
     serializer_class = UserSerializer  # Specifies serializer class to use for serializing and deserializing user data
     permission_classes = [AllowAny]  # Allow anyone to view the list and create new users
+    parser_classes = [MultiPartParser]
 
     # Overriding create method to perform custom logic
     def create(self, request, *args, **kwargs):
@@ -32,6 +40,11 @@ class UserListCreateView(generics.ListCreateAPIView):
             raise ValidationError("Username already exists.")
         if User.objects.filter(email=email).exists():
             raise ValidationError("Email already exists.")
+
+        # Remove additional fields added by default serializer
+        additional_fields = ['is_superuser', 'is_staff', 'is_active', 'groups', 'user_permissions']
+        for field in additional_fields:
+            serializer.validated_data.pop(field, None)
 
         # Obtain the password from the validated data to be hashed
         password = serializer.validated_data['password']
@@ -61,7 +74,9 @@ class UserListCreateView(generics.ListCreateAPIView):
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]  # Allow only authenticated users to make changes to their own account
+    permission_classes = [IsAuthenticated,
+                          IsOwnerOrReadOnly]  # Allow only authenticated users to make changes to their own account
+    parser_classes = [MultiPartParser]
 
     # Overriding perform_update method to perform custom logic
     def perform_update(self, serializer):
@@ -77,8 +92,20 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         if new_email and User.objects.exclude(pk=instance.pk).filter(email=new_email).exists():
             raise ValidationError("Email already exists.")
 
+        new_profile_picture = serializer.validated_data.get('profile_picture')
+
+        # Delete the old profile picture from the AWS S3 bucket if the user is updating it
+        if new_profile_picture and instance.profile_picture:
+            default_storage.delete(instance.profile_picture.name)
+
         # Perform the update
         serializer.save(partial=True)
+
+    # Custom logic for deleting a post
+    def perform_destroy(self, instance):
+        # Delete the profile picture associated with the user from the AWS S3 Bucket
+        default_storage.delete(instance.profile_picture.name)
+        instance.delete()
 
 
 # Endpoint: /api/login/
@@ -119,7 +146,7 @@ def user_logout(request):
 @permission_classes([IsAuthenticated])
 def user_feed(request):
     # Obtains all the users the requesting user is following
-    following_users = User.objects.filter(following__follower=request.user, following__follow_status='accepted')
+    following_users = User.objects.filter(follower__follower=request.user, follower__follow_status='accepted')
 
     # Set a default page size of 20 returned datasets per page
     default_page_size = 20
@@ -166,7 +193,7 @@ def user_profile(request, user_id):
 
     # Check if the requesting user is attempting to view their own account
     if request.user == user:
-        follow_status = None  # Use None to indicate that the user is viewing their own account
+        follow_status = "self"  # Indicate that the user is viewing their own account
 
     # Check if the requesting user is attempting to view a private user that they don't follow
     elif user.profile_privacy == 'private' and (follow_status is False or follow_status == 'pending'):
@@ -230,6 +257,47 @@ def change_profile_privacy(request):
             user.user_posts.filter(visibility='public').update(visibility='private')
         else:
             user.user_posts.filter(visibility='private').update(visibility='public')
+
+    # If user changes profile to public, accept all pending follow requests
+    if new_privacy == 'public':
+        pending_follow_requests = Follow.objects.filter(following=user, follow_status='pending')
+        for follow_request in pending_follow_requests:
+            try:
+                with transaction.atomic():
+                    follow_request.follow_status = 'accepted'
+                    follow_request.save()
+
+                    # Update the num_followers and num_following counters for the users
+                    update_follow_counters(follow_request.following, follow_request.follower)
+
+                    # Get the original follow_request notification to update it based on the selected user action
+                    notification = Notification.objects.get(recipient=follow_request.following,
+                                                            sender=follow_request.follower,
+                                                            notification_type='follow_request')
+
+                    # Update the original "follow_request" notification to "new_follower"
+                    notification.notification_type = 'new_follower'
+                    notification.save()
+
+                    # Notify user that changed their profile privacy to public of their new followers
+                    notify_user(follow_request.following, follow_request.follower, 'new_follower', "started following you")
+                    # Notify the users who had the pending follow requests that their follow request was accepted
+                    notify_user(follow_request.follower, follow_request.following, 'follow_accept', "accepted your follow request")
+
+                    # Notify the user who accepted the request via WebSocket (to apply necessary changes to their front-end)
+                    channel_layer = get_channel_layer()
+                    async_to_sync(channel_layer.group_send)(
+                        f"notifications_{follow_request.following.id}",
+                        {
+                            "type": "notification_follow_request_action",
+                            "action": "accept",
+                            "unique_identifier": str(notification.id),
+                        }
+                    )
+            except Exception as e:
+                # Log the exception, but continue processing other follow requests
+                print(f"Error processing follow request: {e}")
+                continue  # Move to the next follow request
 
     return Response({'success': 'Profile privacy updated successfully'}, status=status.HTTP_200_OK)
 
