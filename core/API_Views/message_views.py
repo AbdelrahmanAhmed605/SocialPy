@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 # Q object helps build complex queries using logical operators to filter database records based on multiple conditions
-from django.db.models import Q, Max
+from django.db.models import Q, Max, Case, When, F, DateTimeField
 # Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
 from django.db import transaction
 from django.core.exceptions import PermissionDenied
@@ -54,7 +54,7 @@ def send_message(request, receiver_id):
             async_to_sync(channel_layer.group_send)(
                 room_group_name,
                 {
-                    "type": "message",
+                    "type": "chat.message",
                     "content": content,
                     "unique_identifier": str(message.id)  # Use message's ID as unique_identifier
                 }
@@ -139,15 +139,19 @@ def get_conversation(request, user_id):
         Q(sender=request.user, receiver=user) | Q(sender=user, receiver=request.user), is_read=False
     )
 
-    read_serializer = MessageSerializer(read_messages, many=True)
-    unread_serializer = MessageSerializer(unread_messages, many=True)
+    # Make a copy of the read and unread messages queryset for serialization
+    read_messages_copy = list(read_messages.all())
+    unread_messages_copy = list(unread_messages.all())
 
-    # If the user accessing the conversation is the receiver, then set the unread messages to be seen
+    # Update the unread messages to be seen
     unread_messages.filter(receiver=request.user, is_read=False).update(is_read=True)
 
+    read_serializer = MessageSerializer(read_messages_copy, many=True)
+    unread_serializer = MessageSerializer(unread_messages_copy, many=True)
+
     return Response({
-        "read_messages": read_serializer.data,
-        "unread_messages": unread_serializer.data
+        "unread_messages": unread_serializer.data,
+        "read_messages": read_serializer.data
     }, status=status.HTTP_200_OK)
 
 
@@ -172,7 +176,14 @@ def get_and_search_conversation_partners(request):
             Q(received_messages__sender=request.user) | Q(sent_messages__receiver=request.user),
             username__icontains=username
         ).annotate(
-            last_interaction=Max('received_messages__created_at', 'sent_messages__created_at')
+            last_received=Max('received_messages__created_at'),
+            last_sent=Max('sent_messages__created_at')
+        ).annotate(
+            last_interaction=Case(
+                When(last_received__gt=F('last_sent'), then=F('last_received')),
+                default=F('last_sent'),
+                output_field=DateTimeField()
+            )
         ).distinct().exclude(id=request.user.id).order_by('-last_interaction')[start_index:end_index]
 
     else:
@@ -180,7 +191,14 @@ def get_and_search_conversation_partners(request):
         conversation_partners = User.objects.filter(
             Q(received_messages__sender=request.user) | Q(sent_messages__receiver=request.user)
         ).annotate(
-            last_interaction=Max('received_messages__created_at', 'sent_messages__created_at')
+            last_received=Max('received_messages__created_at'),
+            last_sent=Max('sent_messages__created_at')
+        ).annotate(
+            last_interaction=Case(
+                When(last_received__gt=F('last_sent'), then=F('last_received')),
+                default=F('last_sent'),
+                output_field=DateTimeField()
+            )
         ).distinct().exclude(id=request.user.id).order_by('-last_interaction')[start_index:end_index]
 
     serializer = UserSerializer(conversation_partners, many=True)

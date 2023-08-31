@@ -7,9 +7,9 @@ from django.db import DatabaseError, IntegrityError
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-from core.models import Notification
+from core.models import Notification, Hashtag
 
-
+# --------------- ALL API VIEWS ---------------
 # Utility Function to calculate pagination indices for API views
 def get_pagination_indeces(request, default_page_size):
     try:
@@ -26,6 +26,8 @@ def get_pagination_indeces(request, default_page_size):
     start_index = (page_number - 1) * page_size
     end_index = start_index + page_size
     return start_index, end_index, None
+
+# --------------- NOTIFICATION API VIEWS ---------------
 
 # Utility function to handle follow-related notifications
 def notify_user(notification_recipient, notification_sender, notification_type, message):
@@ -47,7 +49,7 @@ def notify_user(notification_recipient, notification_sender, notification_type, 
         async_to_sync(channel_layer.group_send)(
             f"notifications_{notification_recipient.id}",
             {
-                "type": "notification",
+                "type": "core.notification",
                 "unique_identifier": str(notification.id),
                 "notification_type": notification_type,
                 "recipient": str(notification_recipient.id),
@@ -70,3 +72,14 @@ def update_follow_counters(following_user, follower_user):
     follower_user.num_following = F('num_following') + 1
     follower_user.save()
 
+
+# --------------- POST API VIEWS ---------------
+
+# Function that takes a list of hashtag names and creates or retrieves corresponding Hashtag objects.
+    # It returns a list of Hashtag objects ids that are associated with the provided names.
+def create_hashtags(hashtag_names):
+    hashtag_ids = []  # Initialize an empty list to store the hashtag IDs
+    for name in hashtag_names:
+        hashtag, created = Hashtag.objects.get_or_create(name=name)
+        hashtag_ids.append(hashtag.pk)  # Add the ID of the retrieved or newly created hashtag to the list
+    return hashtag_ids  # Return the list of hashtag IDs

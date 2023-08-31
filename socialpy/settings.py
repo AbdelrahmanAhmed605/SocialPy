@@ -36,25 +36,27 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-
     # App for django project
     'core',
-    
+
     # Third-party Apps (For Amazon S3 Bucket)
     'storages',
-    
+
     # Django REST framework
     'rest_framework',
     'rest_framework.authtoken',
 
     # For WebSocket Support
     'channels',
+    'daphne',
+
+    # Django
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
 ]
 
 MIDDLEWARE = [
@@ -89,7 +91,7 @@ WSGI_APPLICATION = 'socialpy.wsgi.application'
 
 # ---------- WEBSOCKETS ----------
 # Use the Channels layer as the backend for Django's ASGI interface
-ASGI_APPLICATION = 'socialpy.routing.application'
+ASGI_APPLICATION = 'socialpy.asgi.application'
 
 # ---------- DATABASE ----------
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
@@ -131,7 +133,7 @@ AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
 AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
 
 # Set the S3 file URL access
-AWS_DEFAULT_ACL = 'public-read'
+AWS_DEFAULT_ACL = None
 
 # Set the S3 storage class
 AWS_S3_OBJECT_PARAMETERS = {'StorageClass': 'STANDARD_IA'}

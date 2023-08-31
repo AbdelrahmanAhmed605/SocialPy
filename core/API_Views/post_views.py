@@ -1,51 +1,74 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework import generics, status
+from rest_framework import generics, status, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser
 
+# Q object helps build complex queries using logical operators to filter database records based on multiple conditions
+from django.db.models import Q
 # lets you directly manipulate database fields within database queries, leading to more efficient operations
 from django.db.models import F
 # Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
 from django.db import transaction
+from django.core.files.storage import default_storage
 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-from core.models import Post, Comment, Notification, Hashtag
+from core.models import Post, User, Notification, Hashtag
 from core.serializers import PostSerializer, HashtagSerializer, FollowSerializer
-from .api_utility_functions import get_pagination_indeces
+from .api_utility_functions import get_pagination_indeces, create_hashtags
 
 
 # Endpoint: List Posts: GET /api/posts/
 # Endpoint: Create Post: POST /api/posts/
 # Custom view for listing and creating posts
 class PostListCreateView(generics.ListCreateAPIView):
+    queryset = Post.objects.all()  # Retrieves all the users from the database
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]  # Only authenticated users can create posts
+    parser_classes = [MultiPartParser]
 
-    # Function that takes a list of hashtag names and creates or retrieves corresponding Hashtag objects.
-    # It returns a list of Hashtag objects that are associated with the provided names.
-    def create_hashtags(self, hashtag_names):
-        hashtags = []  # Initialize an empty list to store the hashtag objects
-        for name in hashtag_names:
-            # Try to retrieve an existing hashtag with the given name, or create a new one
-            hashtag, created = Hashtag.objects.get_or_create(name=name)
-            hashtags.append(hashtag)  # Add the retrieved or newly created hashtag to the list
-        return hashtags  # Return the list of hashtag objects
+    # Customize the serializer data for POST requests by adding the authenticated user's primary key
+    def get_serializer(self, *args, **kwargs):
+        kwargs['context'] = self.get_serializer_context()
+        if self.request.method == 'POST' and 'data' in kwargs:
+            kwargs['data']['user'] = self.request.user.pk
+        return self.serializer_class(*args, **kwargs)
 
-    def perform_create(self, serializer):
-        hashtag_names = serializer.validated_data.pop('hashtags', [])  # Extract hashtag names from validated data
+    # Custom logic for creating a post
+    def create(self, request, *args, **kwargs):
+        hashtag_names = []
+        index = 0
+        while f'hashtags_{index}' in request.data:
+            hashtag_name = request.data[f'hashtags_{index}']
+            hashtag_names.append(hashtag_name)
+            index += 1
 
-        # create_hashtags is a function in the serializer that either creates or retrieves corresponding hashtags
-        hashtags = self.create_hashtags(hashtag_names)
+        # Remove empty hashtags from the data and strip whitespaces from non-empty hashtags
+        cleaned_hashtags = [tag.strip() for tag in hashtag_names if tag.strip()]
+        # create_hashtags is a utility function that retrieves or creates provided hashtags (to ensure no duplicate hashtags are made)
+        hashtag_ids = create_hashtags(cleaned_hashtags)
 
-        instance = serializer.save(user=self.request.user)  # Set the user of the post
-        instance.hashtags.set(hashtags)  # Set hashtags after the instance is saved
+        request.data.setlist('hashtags', hashtag_ids)
 
-        # Increment the num_posts counter for the user using F object
-        self.request.user.num_posts = F('num_posts') + 1
-        self.request.user.save()  # Save the user object with the updated counter
+        # Check the requesting user's profile_privacy
+        user_profile_privacy = request.user.profile_privacy
+        # Set the visibility based on user's profile_privacy (it is already set to public by default)
+        if user_profile_privacy == 'private':
+            request.data['visibility'] = 'private'
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        # Increment the num_posts counter for the user using the Django F object
+        request.user.num_posts = F('num_posts') + 1
+        request.user.save()
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 # Endpoint: Retrieve Post: GET /api/posts/{post_id}/
@@ -56,6 +79,7 @@ class PostDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser]
 
     # Override the serializer context to include the request object
     # This is done due to custom logic in the PostSerializer that requires the request data (get_liked_by_user function)
@@ -64,23 +88,56 @@ class PostDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
         context['request'] = self.request
         return context
 
+    # Modify the "hashtags" field when retrieving a post to show the actual hashtag names instead of the primary key id
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+
+        # Modify the 'hashtags' data in the serialized representation
+        modified_data = serializer.data.copy()
+        modified_data['hashtags'] = [hashtag.name for hashtag in instance.hashtags.all()]
+
+        return Response(modified_data)
+
     # Custom logic for updating a post
-    def perform_update(self, serializer):
-        post = serializer.instance  # Get the existing post instance
-        if post.user != self.request.user:
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()  # Get the existing post instance
+
+        # Ensure that the author of the post is the one updating it
+        if instance.user != self.request.user:
             raise PermissionDenied("You don't have permission to update this post.")
 
-        # Save the updated post
-        serializer.save(partial=True)
+        old_media = instance.media
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+
+        hashtag_names = []
+        index = 0
+        while f'hashtags_{index}' in request.data:
+            hashtag_name = request.data[f'hashtags_{index}']
+            hashtag_names.append(hashtag_name)
+            index += 1
+
+        if hashtag_names:
+            cleaned_hashtags = [tag.strip() for tag in hashtag_names]
+            hashtag_ids = create_hashtags(cleaned_hashtags)
+            request.data['hashtags'] = hashtag_ids
+
+        # Delete the old media from the AWS S3 bucket if the user is updating it
+        new_media = serializer.validated_data.get('media')
+        if new_media and old_media:
+            default_storage.delete(old_media.name)
+
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(serializer.data)
 
     # Custom logic for deleting a post
     def perform_destroy(self, instance):
         if instance.user != self.request.user:
             raise PermissionDenied("You don't have permission to delete this post.")
 
-        # Delete the associated comments first
-        comments = Comment.objects.filter(post=instance)
-        comments.delete()
+        default_storage.delete(instance.media.name)
 
         instance.delete()
 
@@ -126,7 +183,7 @@ def like_post(request, post_id):
             async_to_sync(channel_layer.group_send)(
                 f"notifications_{post.user.id}",
                 {
-                    "type": "notification",
+                    "type": "core.notification",
                     "unique_identifier": str(notification.id),
                     "notification_type": "new_like",
                     "recipient": str(post.user.id),
@@ -255,10 +312,11 @@ def explore_page(request):
 
     # If the user is authenticated, then show paginated posts of public users they do not follow
     if request.user.is_authenticated:
-        following_users = request.user.following.all()
-        explore_posts = Post.objects.filter(visibility='public').exclude(user__in=following_users)[start_index:end_index]
+        following_users = User.objects.filter(follower__follower=request.user, follower__follow_status='accepted')
+        explore_posts = Post.objects.filter(visibility='public').exclude(
+            Q(user__in=following_users) | Q(user=request.user)
+        )[start_index:end_index]
         serializer = PostSerializer(explore_posts, many=True, context={'request': request})
-
     else:
         # If the user is not authenticated, then show paginated posts of public users
         explore_posts = Post.objects.filter(visibility='public')[start_index:end_index]

@@ -1,27 +1,31 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
-from ..models import Notification
+from channels.db import database_sync_to_async
+from ..models import Notification, User
 
 
 # WebSocket consumer for handling real-time notifications.
 class NotificationConsumer(AsyncWebsocketConsumer):
 
+    # Retrieve a notification from the database by its ID
+    # wrapped with @database_sync_to_async to allow database access in an asynchronous context.
+    @database_sync_to_async
+    def get_notification(self, notification_id):
+        try:
+            return Notification.objects.get(id=notification_id)
+        except Notification.DoesNotExist:
+            return None
+
     # Establishes a WebSocket connection for the user's notifications.
     async def connect(self):
-        user = self.scope["user"]
+        # Get the receiver of the WebSocket Notifications from the url
+        user = self.scope["url_route"]["kwargs"]["user_id"]
 
-        # If the user is not authenticated, send an authentication required message and close the connection
-        if user.is_anonymous:
-            await self.send(text_data=json.dumps({
-                "type": "authentication_required",
-                "message": "Authentication is required to access notifications."
-            }))
-            await self.close()
-            return
+        # Store the authenticated user's id to be used in the mark_notification_as_read function
+        self.auth_userId = user
 
-        self.notification_group = f"notifications_{user.id}"
-
-        # Add the user to the notification group
+        # Create a notification group for the user and add it to the channel layer
+        self.notification_group = f"notifications_{user}"
         await self.channel_layer.group_add(
             self.notification_group,
             self.channel_name
@@ -31,30 +35,35 @@ class NotificationConsumer(AsyncWebsocketConsumer):
 
     # Disconnects the user from the WebSocket notification group.
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(
-            self.notification_group,
-            self.channel_name
-        )
+        if hasattr(self, 'notification_group'):
+            await self.channel_layer.group_discard(
+                self.notification_group,
+                self.channel_name
+            )
 
     # Marks a notification in the Live WebSocket as read if the user reading the notification is the recipient
     async def mark_notification_as_read(self, unique_identifier):
-        # Find the notification by its unique identifier and mark it as read
         try:
+            # Find the notification by its unique identifier
             notification_id = int(unique_identifier)
-            notification = Notification.objects.get(id=notification_id)
-            if notification.recipient == self.scope["user"] and not notification.is_read:
-                notification.is_read = True
-                notification.save()
-        except (ValueError, Notification.DoesNotExist):
+            notification = await self.get_notification(notification_id)
+            if notification:
+                # Find the recipient of the notification
+                recipient_id = notification.recipient_id
+                # Check the notification recipient matches the current authenticated user and the notification is unread
+                if recipient_id == self.auth_userId and not notification.is_read:
+                    notification.is_read = True
+                    await notification.save()
+        except ValueError:
             pass
 
     # Sends a new notification message to the connected user.
-    async def notify_notification(self, event):
+    async def core_notification(self, event):
         unique_identifier = event["unique_identifier"]  # notification's id
         message = event["message"]  # notification message
         notification_type = event["notification_type"]  # type of notification
         recipient = event["recipient"]  # recipient of notification
-        sender = event["sender"]  # sender of notification (user who comitted action)
+        sender = event["sender"]  # sender of notification (user who committed action)
 
         # user profile picture associated with the notification (ex: user who liked your post)
         sender_profile_picture_url = event["sender_profile_picture_url"]
@@ -63,7 +72,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
 
         # Send notification data to the user
         await self.send(text_data=json.dumps({
-            "type": "notification",
+            "type": "core.notification",
             "unique_identifier": unique_identifier,
             "notification_type": notification_type,
             "recipient": recipient,
@@ -92,8 +101,8 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     async def remove_notification(self, event):
         unique_identifier = event["unique_identifier"]
 
-        # # Send removal instruction to the user's WebSocket
+        # Send removal instruction to the user's WebSocket
         await self.send(text_data=json.dumps({
-            "type": "remove_notification",
+            "type": "remove.notification",
             "unique_identifier": unique_identifier,
         }))

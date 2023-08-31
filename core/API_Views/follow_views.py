@@ -180,21 +180,24 @@ def unfollow_user(request, user_id):
     try:
         # Use a transaction to handle unfollowing, updating the counters, and deleting the associated notification
         with transaction.atomic():
-            # Remove the follow relationship
-            follow.delete()
-
-            # Decrement the num_followers counter for the user being unfollowed using F object
-            following_user.num_followers = F('num_followers') - 1
-            following_user.save()
-            # Decrement the num_following counter for the user who is unfollowing using F object
-            follower_user.num_following = F('num_following') - 1
-            follower_user.save()
-
             # Fetch the associated "follow_request" or "new_follower" notification
             notification = Notification.objects.filter(
                 Q(sender=follower_user, recipient=following_user, notification_type='follow_request') |
                 Q(sender=follower_user, recipient=following_user, notification_type='new_follower')
             ).first()
+
+            # Check that the requesting user is following the user they are attempting to unfollow
+            # Since if the requesting user is canceling a pending follow request, no follow counts need to be changed
+            if follow.follow_status == "accepted":
+                # Decrement the num_followers counter for the user being unfollowed using F object
+                following_user.num_followers = F('num_followers') - 1
+                following_user.save()
+                # Decrement the num_following counter for the user who is unfollowing using F object
+                follower_user.num_following = F('num_following') - 1
+                follower_user.save()
+
+            # Remove the follow relationship
+            follow.delete()
 
             # Check if the notification exists
             if notification:
@@ -241,8 +244,7 @@ def get_followers(request, user_id):
 
     try:
         # Get a paginated list of the user's followers
-        followers = Follow.objects.filter(following=user).select_related('follower')[start_index:end_index]
-        follower_users = [follow.follower for follow in followers]
+        follower_users = User.objects.filter(following__following=user, following__follow_status='accepted')[start_index:end_index]
 
         serializer = FollowSerializer(follower_users, many=True, context={'request': request})
 
@@ -272,8 +274,7 @@ def get_following(request, user_id):
 
     try:
         # Get a paginated list of the user's that the requesting user follows
-        followings = Follow.objects.filter(follower=user).select_related('following')[start_index:end_index]
-        following_users = [following.following for following in followings]
+        following_users = User.objects.filter(follower__follower=user, follower__follow_status='accepted')[start_index:end_index]
 
         serializer = FollowSerializer(following_users, many=True, context={'request': request})
 
