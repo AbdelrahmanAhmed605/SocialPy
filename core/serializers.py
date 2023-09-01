@@ -25,6 +25,19 @@ class HashtagSerializer(serializers.ModelSerializer):
 
 
 class PostSerializer(serializers.ModelSerializer):
+    # Custom field for the user representation with only 'username' and 'profile_picture'
+    user = serializers.SerializerMethodField()
+
+    # Function to customize the representation of the user field
+    def get_user(self, post):
+        user = post.user  # Get the user associated with the post
+        if user:
+            return {
+                'username': user.username,
+                'profile_picture': user.profile_picture.url if user.profile_picture else None
+            }
+        return None
+
     # Custom field to indicate if the requesting user has liked the post
     liked_by_user = serializers.SerializerMethodField()
 
@@ -64,6 +77,19 @@ class CommentSerializer(serializers.ModelSerializer):
                 return comment.user == user
         return False
 
+    # Custom field for the user representation with only 'username' and 'profile_picture'
+    user = serializers.SerializerMethodField()
+
+    # Function to customize the representation of the user field
+    def get_user(self, post):
+        user = post.user  # Get the user associated with the post
+        if user:
+            return {
+                'username': user.username,
+                'profile_picture': user.profile_picture.url if user.profile_picture else None
+            }
+        return None
+
     class Meta:
         model = Comment
         fields = ['id', 'user', 'post', 'content', 'created_at', 'can_edit', 'can_delete']
@@ -81,7 +107,7 @@ class FollowSerializer(serializers.ModelSerializer):
             if requesting_user.is_authenticated:
                 if requesting_user == following_user:
                     return "self"
-                follow_instance = requesting_user.following.filter(id=following_user.id).first()
+                follow_instance = requesting_user.following.filter(following=following_user).first()
                 if follow_instance:
                     return follow_instance.follow_status  # return the follow status
         # If the requesting user is not authenticated, or we do not follow the user
