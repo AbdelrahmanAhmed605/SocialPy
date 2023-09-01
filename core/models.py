@@ -1,7 +1,6 @@
 # Import necessary modules
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import FileExtensionValidator
 
 
 # Define a custom User model that extends AbstractUser
@@ -26,18 +25,17 @@ class Hashtag(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['name']),
+        ]
+
 
 # Model to represent user posts
 class Post(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_posts')  # ForeignKey user who made the post
     content = models.TextField(max_length=1000)  # Text content of the post
-    media = models.FileField(
-        upload_to='posts/',
-        null=False,
-        blank=False,
-        validators=[
-            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi', 'mkv'])]
-    )
+    media = models.ImageField(upload_to='posts/', null=False, blank=False)
     visibility = models.CharField(max_length=10, choices=[('public', 'Public'), ('private', 'Private')], default='public')  # Visibility setting for the post
     hashtags = models.ManyToManyField(Hashtag, blank=True)  # Hashtags or tags associated with the post
     created_at = models.DateTimeField(auto_now_add=True)
@@ -50,6 +48,10 @@ class Post(models.Model):
         return f"{self.user.username} - {self.created_at}"
 
     class Meta:
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['visibility']),
+        ]
         ordering = ['-created_at']  # Sort posts by created_at in descending order
 
 
@@ -64,6 +66,10 @@ class Comment(models.Model):
         return f"{self.user.username} - {self.post}"
 
     class Meta:
+        indexes = [
+            models.Index(fields=['post']),
+            models.Index(fields=['created_at']),
+        ]
         ordering = ['-created_at']
 
 
@@ -80,6 +86,9 @@ class Follow(models.Model):
 
     class Meta:
         unique_together = ('follower', 'following')  # Ensure unique follower-following pairs
+        indexes = [
+            models.Index(fields=['follower', 'following', 'follow_status']),  # Combined index
+        ]
 
     def __str__(self):
         return f"{self.follower.username} follows {self.following.username}"
@@ -98,6 +107,10 @@ class Message(models.Model):
         return f"{self.sender.username} to {self.receiver.username} - {self.created_at}"
 
     class Meta:
+        indexes = [
+            models.Index(fields=['sender']),
+            models.Index(fields=['receiver']),
+        ]
         ordering = ['-created_at']
 
 
@@ -118,10 +131,12 @@ class Notification(models.Model):
     notification_post = models.ForeignKey(Post, on_delete=models.CASCADE, null=True, blank=True)
     notification_comment = models.ForeignKey(Comment, on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    is_read = models.BooleanField(default=False)
 
     def __str__(self):
         return f'{self.notification_type} notification for {self.recipient}'
 
     class Meta:
-        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['recipient']),  # Index for recipient field
+            models.Index(fields=['sender', 'notification_type']),  # Composite index
+        ]
