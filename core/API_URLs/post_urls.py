@@ -22,7 +22,7 @@ urlpatterns = [
     path('api/hashtags/', post_views.suggest_hashtags, name='suggest-hashtags'),
 
     # Endpoint: GET /api/hashtag/posts/?hashtag={}&page={}&page_size={}
-    path('api/hashtag/posts/', post_views.search_hashtag_posts, name='search-hashtag-posts'),
+    path('api/hashtag/<int:hashtag_id>/posts/', post_views.search_hashtag_posts, name='search-hashtag-posts'),
 
     # Endpoint: GET /api/explore/posts/?page={}&page_size={}
     path('api/explore/posts/', post_views.explore_page, name='explore-page'),
