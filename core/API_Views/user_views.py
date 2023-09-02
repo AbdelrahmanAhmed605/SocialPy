@@ -58,7 +58,7 @@ class UserListCreateView(generics.ListCreateAPIView):
         headers = self.get_success_headers(serializer.data)
 
         # Generate or get the token for the user
-        token, _ = Token.objects.get_or_create(user=user)
+        token = Token.objects.create(user=user)
 
         # Add the token data to the response
         response_data = serializer.data
