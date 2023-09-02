@@ -58,7 +58,7 @@ class UserListCreateView(generics.ListCreateAPIView):
         headers = self.get_success_headers(serializer.data)
 
         # Generate or get the token for the user
-        token, _ = Token.objects.get_or_create(user=user)
+        token = Token.objects.create(user=user)
 
         # Add the token data to the response
         response_data = serializer.data
@@ -169,67 +169,42 @@ def user_feed(request):
 @api_view(['GET'])
 def user_profile(request, user_id):
     try:
-        # Get user by username
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Get the pagination slicing indeces
     default_page_size = 20
     start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
     if validation_response:
         return validation_response
 
-    # Check if there is a requesting user and get their follow status to the viewed user
+    follow_status = False  # Keeps track of the requesting user's follow relationship to the user they are viewing
+    can_view = True  # Keeps track of whether the requesting user can view this user's profile or not
+
     if request.user.is_authenticated:
-        follow_instance = request.user.following.filter(id=user_id).first()
+        follow_instance = request.user.following.filter(following=user).first()
         if follow_instance:
             follow_status = follow_instance.follow_status
-        else:
-            follow_status = False
-    # The else means that there is no authenticated requesting user (not logged in or no account)
-    else:
-        follow_status = False
+        elif request.user.id == user_id:
+            follow_status = "self"
 
-    # Check if the requesting user is attempting to view their own account
-    if request.user == user:
-        follow_status = "self"  # Indicate that the user is viewing their own account
+    if user.profile_privacy == 'private' and (follow_status is False or follow_status == 'pending'):
+        can_view = False
 
-    # Check if the requesting user is attempting to view a private user that they don't follow
-    elif user.profile_privacy == 'private' and (follow_status is False or follow_status == 'pending'):
-        response_data = {
-            'username': user.username,
-            'profile_picture': user.profile_picture.url if user.profile_picture else None,
-            'bio': user.bio,
-            'contact_information': user.contact_information,
-            'follow_status': follow_status,
-            'can_view': False,  # Indicate we cannot view the user's profile
-            'posts': None,  # Indicate that the user has no access to posts
-            'num_followers': user.num_followers,  # Use the counter field from the User model
-            'num_following': user.num_following,  # Use the counter field from the User model
-            'num_posts': user.num_posts,  # Use the counter field from the User model
-        }
-        return Response(response_data, status=status.HTTP_200_OK)
-
-    # If we are in this section below, it means the above elif statement didn't run, meaning we are
-    # attempting to view a user that is public or private, but we follow them
-
-    # Get a paginated list of the user's posts for users the requesting user has access to
     users_posts = Post.objects.filter(user=user)[start_index:end_index]
-    serializer = PostSerializer(users_posts, many=True)
+    serializer = PostSerializer(users_posts, many=True, context={'request': request})
 
-    # Add the follow status and additional information to the response data
     response_data = {
         'username': user.username,
         'profile_picture': user.profile_picture.url if user.profile_picture else None,
         'bio': user.bio,
         'contact_information': user.contact_information,
         'follow_status': follow_status,
-        'can_view': True,  # indicate we can view the user's profile
-        'posts': serializer.data,
-        'num_followers': user.num_followers,  # Use the counter field from the User model
-        'num_following': user.num_following,  # Use the counter field from the User model
-        'num_posts': user.num_posts,  # Use the counter field from the User model
+        'can_view': can_view,
+        'posts': serializer.data if can_view else None,
+        'num_followers': user.num_followers,
+        'num_following': user.num_following,
+        'num_posts': user.num_posts,
     }
 
     return Response(response_data, status=status.HTTP_200_OK)
@@ -253,10 +228,7 @@ def change_profile_privacy(request):
 
     # Update visibility of the user's posts
     if new_privacy != old_privacy:
-        if new_privacy == 'private':
-            user.user_posts.filter(visibility='public').update(visibility='private')
-        else:
-            user.user_posts.filter(visibility='private').update(visibility='public')
+        user.user_posts.filter(visibility=old_privacy).update(visibility=new_privacy)
 
     # If user changes profile to public, accept all pending follow requests
     if new_privacy == 'public':
@@ -309,7 +281,7 @@ def search_users(request):
     username = request.query_params.get('username')  # Get the search query from query parameters
 
     if not username:
-        return Response({"error": "Please provide a username query parameter"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response([], status=status.HTTP_200_OK)
 
     # Set a default page size of 5 returned datasets per page
     default_page_size = 5
@@ -318,8 +290,8 @@ def search_users(request):
         return validation_response
 
     # Search for users based on username
-    matched_users = User.objects.filter(username__icontains=username)[start_index:end_index]
+    matched_users = User.objects.filter(username__icontains=username)[start_index:end_index].only('username', 'profile_picture')
 
-    serializer = FollowSerializer(matched_users, many=True)
+    serializer = FollowSerializer(matched_users, many=True, context={'request': request})
 
     return Response(serializer.data, status=status.HTTP_200_OK)

@@ -13,7 +13,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
 from core.models import Message, User
-from core.serializers import MessageSerializer, UserSerializer
+from core.serializers import MessageSerializer, UserSerializer, FollowSerializer
 from .api_utility_functions import get_pagination_indeces
 
 
@@ -45,9 +45,8 @@ def send_message(request, receiver_id):
     try:
         # Use an atomic transaction for creating the Message instance, and informing the WebSocket of the new message
         with transaction.atomic():
-            # Creates the message
-            message = Message(sender=sender, receiver=receiver, content=content, is_delivered=True)
-            message.save()
+            # Create the message
+            message = Message.objects.create(sender=sender, receiver=receiver, content=content, is_delivered=True)
 
             # Notify WebSocket group about the new message
             channel_layer = get_channel_layer()
@@ -129,29 +128,29 @@ def get_conversation(request, user_id):
     if validation_response:
         return validation_response
 
-    # Get paginated list of read messages between the requesting user and the receiver
-    read_messages = Message.objects.filter(
-        Q(sender=request.user, receiver=user) | Q(sender=user, receiver=request.user), is_read=True
-    )[start_index:end_index]
+    # Get all messages between the requesting user and the receiver
+    messages = Message.objects.filter(
+        Q(sender=request.user, receiver=user) | Q(sender=user, receiver=request.user))[start_index:end_index]
 
-    # Get all unread messages between the requesting user and the receiver
-    unread_messages = Message.objects.filter(
-        Q(sender=request.user, receiver=user) | Q(sender=user, receiver=request.user), is_read=False
-    )
+    # Get the most recent message in the conversation
+    most_recent_message = messages.first()
 
-    # Make a copy of the read and unread messages queryset for serialization
-    read_messages_copy = list(read_messages.all())
-    unread_messages_copy = list(unread_messages.all())
+    # Determine the status of the most recent message for the sender (if the receiver has seen their message or not)
+    most_recent_sender_status = None  # if the requesting user is the receiver then they don't need a status
+    if most_recent_message and most_recent_message.sender == request.user:
+        most_recent_sender_status = {
+            "id": most_recent_message.id,
+            "is_read": most_recent_message.is_read
+        }
 
-    # Update the unread messages to be seen
-    unread_messages.filter(receiver=request.user, is_read=False).update(is_read=True)
+    # Update unread messages sent by the `user` since the `requesting user` has viewed them after calling this API
+    Message.objects.filter(sender=user, receiver=request.user, is_read=False).update(is_read=True)
 
-    read_serializer = MessageSerializer(read_messages_copy, many=True)
-    unread_serializer = MessageSerializer(unread_messages_copy, many=True)
+    serializer = MessageSerializer(messages, many=True)
 
     return Response({
-        "unread_messages": unread_serializer.data,
-        "read_messages": read_serializer.data
+        "messages": serializer.data,
+        "most_recent_sender_status": most_recent_sender_status,
     }, status=status.HTTP_200_OK)
 
 
@@ -201,6 +200,6 @@ def get_and_search_conversation_partners(request):
             )
         ).distinct().exclude(id=request.user.id).order_by('-last_interaction')[start_index:end_index]
 
-    serializer = UserSerializer(conversation_partners, many=True)
+    serializer = FollowSerializer(conversation_partners, many=True)
 
     return Response(serializer.data, status=status.HTTP_200_OK)

@@ -83,3 +83,17 @@ def create_hashtags(hashtag_names):
         hashtag, created = Hashtag.objects.get_or_create(name=name)
         hashtag_ids.append(hashtag.pk)  # Add the ID of the retrieved or newly created hashtag to the list
     return hashtag_ids  # Return the list of hashtag IDs
+
+
+# --------------- Follow API VIEWS ---------------
+
+def send_follow_request_notification(notification, user, action):
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"notifications_{user.id}",
+        {
+            "type": "notification_follow_request_action",
+            "action": action,
+            "unique_identifier": str(notification.id),
+        }
+    )

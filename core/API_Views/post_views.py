@@ -277,14 +277,14 @@ def suggest_hashtags(request):
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-# Endpoint: /api/hashtag/posts/?hashtag={}&page={}&page_size={}
+# Endpoint: /api/hashtag/{hashtag_id}/posts/?page={}&page_size={}
 # API view to allow users to search for posts by a specific hashtag
 @api_view(['GET'])
-def search_hashtag_posts(request):
-    hashtag = request.query_params.get('hashtag')  # Get the search query from query parameters
-
-    if not hashtag:
-        return Response({"error": "Please provide a hashtag query parameter"}, status=status.HTTP_400_BAD_REQUEST)
+def search_hashtag_posts(request, hashtag_id):
+    try:
+        hashtag = Hashtag.objects.get(id=hashtag_id)
+    except Hashtag.DoesNotExist:
+        return Response({"error": "Hashtag not found"}, status=status.HTTP_404_NOT_FOUND)
 
     # Get the pagination slicing indeces
     default_page_size = 20
@@ -293,9 +293,8 @@ def search_hashtag_posts(request):
         return validation_response
 
     # Search for paginated posts with the specified hashtag and a public visibility
-    matched_posts = Post.objects.filter(hashtags__name=hashtag, visibility='public')[start_index:end_index]
-
-    serializer = PostSerializer(matched_posts, many=True)
+    matched_posts = Post.objects.filter(hashtags=hashtag, visibility='public')[start_index:end_index]
+    serializer = PostSerializer(matched_posts, many=True, context={'request': request})
 
     return Response(serializer.data, status=status.HTTP_200_OK)
 
