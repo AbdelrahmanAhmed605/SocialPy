@@ -19,7 +19,7 @@ urlpatterns = [
     path('api/logout/', user_views.user_logout, name='user-logout'),
 
     # Endpoint: GET /api/feed/?page={}&page_size={}
-    path('api/feed/', user_views.user_feed, name='user-feed'),
+    path('api/feed/', user_views.UserFeedView.as_view(), name='user-feed'),
 
     # Endpoint: GET /api/user/profile/{user_id}/?page={}&page_size={}
     path('api/user/profile/<int:user_id>/', user_views.user_profile, name='user-profile'),
@@ -28,5 +28,5 @@ urlpatterns = [
     path('api/user/change_profile_privacy/', user_views.change_profile_privacy, name='change-profile-privacy'),
 
     # Endpoint: GET /api/search/users/?page={}&page_size={}
-    path('api/search/users/', user_views.search_users, name='search-users'),
+    path('api/search/users/', user_views.SearchUsersView.as_view(), name='search-users'),
 ]
