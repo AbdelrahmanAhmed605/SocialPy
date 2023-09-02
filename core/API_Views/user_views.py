@@ -8,15 +8,20 @@ from rest_framework.parsers import MultiPartParser
 
 from django.db import transaction
 from django.core.files.storage import default_storage
+from django.contrib.auth import get_user_model
 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-from core.models import User, Post, Follow, Notification
+from core.models import Post, Follow, Notification
 from core.serializers import UserSerializer, PostSerializer, FollowSerializer
 from core.Custom_Permission_Classes.checkOwner import IsOwnerOrReadOnly
-from .api_utility_functions import get_pagination_indeces, update_follow_counters, notify_user
+from .api_utility_functions import update_follow_counters, notify_user
+from core.Pagination_Classes.paginations import LargePagination, SmallPagination
 
+
+# Get the User model configured for this Django project
+User = get_user_model()
 
 # Endpoint: List Users: GET /api/users/
 # Endpoint: Create User: POST /api/users/
@@ -140,75 +145,74 @@ def user_logout(request):
     return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
 
 
-# Endpoint: /api/feed/?page={}&page_size={}
+# Endpoint: /api/feed/?page={}
 # API view to get posts from the users that the current user follows
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def user_feed(request):
-    # Obtains all the users the requesting user is following
-    following_users = User.objects.filter(follower__follower=request.user, follower__follow_status='accepted')
+class UserFeedView(generics.ListAPIView):
+    serializer_class = PostSerializer  # Set your serializer class here
+    pagination_class = LargePagination  # Use LargePagination for pagination
+    permission_classes = [IsAuthenticated]
 
-    # Set a default page size of 20 returned datasets per page
-    default_page_size = 20
-    # Utility function to get current page number and page size from the request's query parameters and calculate the pagination slicing indeces
-    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
-    if validation_response:
-        return validation_response
+    def get_queryset(self):
+        # Get posts created by users the requesting user follows
+        feed_posts = Post.objects.filter(
+            user__follower__follower=self.request.user,
+            user__follower__follow_status='accepted'
+        )
 
-    # fetch the posts from the users in following_users
-    feed_posts = Post.objects.filter(user__in=following_users)[start_index:end_index]
-
-    # The context is used to pass the request to the PostSerializer to perform custom logic
-    serializer = PostSerializer(feed_posts, many=True, context={'request': request})
-
-    return Response(serializer.data, status=status.HTTP_200_OK)
+        return feed_posts
 
 
-# Endpoint: /api/user/profile/{user_id}/?page={}&page_size={}
+# Endpoint: /api/user/profile/{user_id}/?page={}
 # API view to get a users profile and its information
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def user_profile(request, user_id):
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    default_page_size = 20
-    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
-    if validation_response:
-        return validation_response
-
     follow_status = False  # Keeps track of the requesting user's follow relationship to the user they are viewing
     can_view = True  # Keeps track of whether the requesting user can view this user's profile or not
 
-    if request.user.is_authenticated:
+    # Check if the user is attempting to view their own profile
+    if request.user.id == user_id:
+        follow_status = "self"
+    else:
         follow_instance = request.user.following.filter(following=user).first()
         if follow_instance:
             follow_status = follow_instance.follow_status
-        elif request.user.id == user_id:
-            follow_status = "self"
 
-    if user.profile_privacy == 'private' and (follow_status is False or follow_status == 'pending'):
-        can_view = False
+        if user.profile_privacy == 'private' and (follow_status is False or follow_status == 'pending'):
+            can_view = False
 
-    users_posts = Post.objects.filter(user=user)[start_index:end_index]
-    serializer = PostSerializer(users_posts, many=True, context={'request': request})
-
+    # Initialize the response_data dictionary
     response_data = {
         'username': user.username,
         'profile_picture': user.profile_picture.url if user.profile_picture else None,
         'bio': user.bio,
-        'contact_information': user.contact_information,
         'follow_status': follow_status,
         'can_view': can_view,
-        'posts': serializer.data if can_view else None,
         'num_followers': user.num_followers,
         'num_following': user.num_following,
         'num_posts': user.num_posts,
+        'posts': None,  # Initialize 'posts' as None
     }
 
-    return Response(response_data, status=status.HTTP_200_OK)
+    if can_view:
+        # Create an instance of custom LargePagination class
+        paginator = LargePagination()
 
+        # Paginate the queryset of the user's posts
+        users_posts = Post.objects.filter(user=user)
+        page = paginator.paginate_queryset(users_posts, request)
+
+        serializer = PostSerializer(page, many=True, context={'request': request})
+
+        # Update the 'posts' field in response_data with serialized data
+        response_data['posts'] = serializer.data
+
+    return Response(response_data, status=status.HTTP_200_OK)
 
 # Endpoint: /api/user/change_profile_privacy/
 # API view to change a user's profile privacy setting
@@ -274,24 +278,19 @@ def change_profile_privacy(request):
     return Response({'success': 'Profile privacy updated successfully'}, status=status.HTTP_200_OK)
 
 
-# Endpoint: /api/search/users/?username={}&page={}&page_size={}
+# Endpoint: /api/search/users/?username={}&page={}
 # API view to search for users
-@api_view(['GET'])
-def search_users(request):
-    username = request.query_params.get('username')  # Get the search query from query parameters
+class SearchUsersView(generics.ListAPIView):
+    serializer_class = FollowSerializer
+    pagination_class = SmallPagination
+    permission_classes = [IsAuthenticated]
 
-    if not username:
-        return Response([], status=status.HTTP_200_OK)
+    def get_queryset(self):
+        username = self.request.query_params.get('username')
 
-    # Set a default page size of 5 returned datasets per page
-    default_page_size = 5
-    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
-    if validation_response:
-        return validation_response
+        if not username:
+            return User.objects.none()
 
-    # Search for users based on username
-    matched_users = User.objects.filter(username__icontains=username)[start_index:end_index].only('username', 'profile_picture')
-
-    serializer = FollowSerializer(matched_users, many=True, context={'request': request})
-
-    return Response(serializer.data, status=status.HTTP_200_OK)
+        # Search for users based on username
+        queryset = User.objects.filter(username__icontains=username).only('username', 'profile_picture')
+        return queryset
