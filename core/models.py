@@ -1,12 +1,19 @@
 # Import necessary modules
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+import uuid
 
+
+# Generate a unique identifier for user profile picture files (to avoid files with the same names being saved to the S3 Bucket)
+def user_profile_picture_upload(instance, filename):
+    unique_identifier = uuid.uuid4().hex
+    # Construct the path including the unique identifier
+    return f'profiles/{unique_identifier}/{filename}'
 
 # Define a custom User model that extends AbstractUser
 class User(AbstractUser):
     # Additional fields for user profiles
-    profile_picture = models.ImageField(upload_to='profiles/', null=True, blank=True)  # Profile picture for the user
+    profile_picture = models.ImageField(upload_to=user_profile_picture_upload, null=True, blank=True)  # Profile picture for the user
     bio = models.TextField(max_length=300, blank=True)  # Short bio or description for the user
     profile_privacy = models.CharField(max_length=10, choices=[('public', 'Public'), ('private', 'Private')], default='public')  # Privacy setting for user profile
     num_followers = models.PositiveIntegerField(default=0)  # counter to keep track of users num of followers
@@ -30,11 +37,17 @@ class Hashtag(models.Model):
         ]
 
 
+# Generate a unique identifier for media files (to avoid media files with the same names being saved to the S3 Bucket)
+def post_media_upload(instance, filename):
+    unique_identifier = uuid.uuid4().hex
+    # Construct the path including the unique identifier
+    return f'posts/{unique_identifier}/{filename}'
+
 # Model to represent user posts
 class Post(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_posts')  # ForeignKey user who made the post
     content = models.TextField(max_length=1000)  # Text content of the post
-    media = models.ImageField(upload_to='posts/', null=False, blank=False)
+    media = models.ImageField(upload_to=post_media_upload, null=False, blank=False)
     visibility = models.CharField(max_length=10, choices=[('public', 'Public'), ('private', 'Private')], default='public')  # Visibility setting for the post
     hashtags = models.ManyToManyField(Hashtag, blank=True)  # Hashtags or tags associated with the post
     created_at = models.DateTimeField(auto_now_add=True)
