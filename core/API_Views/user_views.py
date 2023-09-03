@@ -32,6 +32,7 @@ class UserListCreateView(generics.ListCreateAPIView):
     serializer_class = UserSerializer  # Specifies serializer class to use for serializing and deserializing user data
     permission_classes = [AllowAny]  # Allow anyone to view the list and create new users
     parser_classes = [MultiPartParser]
+    pagination_class = LargePagination
 
     # Overriding create method to perform custom logic
     def create(self, request, *args, **kwargs):
@@ -154,13 +155,19 @@ class UserFeedView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Get posts created by users the requesting user follows
-        feed_posts = Post.objects.filter(
-            user__follower__follower=self.request.user,
-            user__follower__follow_status='accepted'
-        )
-
-        return feed_posts
+        try:
+            # Get posts created by users the requesting user follows
+            feed_posts = Post.objects.filter(
+                user__follower__follower=self.request.user,
+                user__follower__follow_status='accepted'
+            )
+            return feed_posts
+        except DatabaseError as e:
+            return Response({"error": f"Database error: {str(e)}"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            # Handle other unexpected errors
+            return Response({"error": "An unexpected error occurred: " + str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # Endpoint: /api/user/profile/{user_id}/?page={}
@@ -201,17 +208,25 @@ def user_profile(request, user_id):
     }
 
     if can_view:
-        # Create an instance of custom LargePagination class
-        paginator = LargePagination()
+        try:
+            # Create an instance of custom LargePagination class
+            paginator = LargePagination()
 
-        # Paginate the queryset of the user's posts
-        users_posts = Post.objects.filter(user=user)
-        page = paginator.paginate_queryset(users_posts, request)
+            # Paginate the queryset of the user's posts
+            users_posts = Post.objects.filter(user=user)
+            page = paginator.paginate_queryset(users_posts, request)
 
-        serializer = PostSerializerMinimal(page, many=True, context={'request': request})
+            serializer = PostSerializerMinimal(page, many=True, context={'request': request})
 
-        # Update the 'posts' field in response_data with serialized data
-        response_data['posts'] = serializer.data
+            # Update the 'posts' field in response_data with serialized data
+            response_data['posts'] = serializer.data
+        except DatabaseError as e:
+            # Handle database-related errors
+            return Response({"error": f"Database error: {str(e)}"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            # Handle other unexpected errors
+            return Response({"error": "An unexpected error occurred: " + str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response(response_data, status=status.HTTP_200_OK)
 
@@ -292,6 +307,14 @@ class SearchUsersView(generics.ListAPIView):
         if not username:
             return User.objects.none()
 
-        # Search for users based on username
-        queryset = User.objects.filter(username__icontains=username).only('username', 'profile_picture')
-        return queryset
+        try:
+            # Search for users based on username
+            queryset = User.objects.filter(username__icontains=username).only('username', 'profile_picture')
+            return queryset
+        except DatabaseError as e:
+            # Handle database-related errors
+            return Response({"error": f"Database error: {str(e)}"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            # Handle other unexpected errors
+            return Response({"error": "An unexpected error occurred: " + str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)

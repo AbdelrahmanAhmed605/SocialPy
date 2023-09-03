@@ -30,6 +30,7 @@ class PostListCreateView(generics.ListCreateAPIView):
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]  # Only authenticated users can create posts
     parser_classes = [MultiPartParser]
+    pagination_class = LargePagination
 
     # Set the user field of the serializer to the authenticated user
     def perform_create(self, serializer):
@@ -265,10 +266,17 @@ class SuggestHashtagsView(generics.ListAPIView):
         if not hashtag:
             return Hashtag.objects.none()
 
-        # Search for hashtag names that are similar to the provided search query
-        suggested_hashtags = Hashtag.objects.filter(name__icontains=hashtag)
-
-        return suggested_hashtags
+        try:
+            # Search for hashtag names that are similar to the provided search query
+            suggested_hashtags = Hashtag.objects.filter(name__icontains=hashtag)
+            return suggested_hashtags
+        except DatabaseError as e:
+            # Handle database-related errors
+            return Response({"error": f"Database error: {str(e)}"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            # Handle other unexpected errors
+            return Response({"error": "An unexpected error occurred: " + str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # Endpoint: /api/hashtag/{hashtag_id}/posts/?page={}

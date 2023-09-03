@@ -130,15 +130,19 @@ class ConversationListView(generics.ListAPIView):
         except User.DoesNotExist:
             return Message.objects.none()
 
-        # Fetch all messages between the requesting user and the receiver
-        messages = Message.objects.filter(
-            Q(sender=self.request.user, receiver=user) | Q(sender=user, receiver=self.request.user)
-        )
+        try:
+            # Fetch all messages between the requesting user and the receiver
+            messages = Message.objects.filter(
+                Q(sender=self.request.user, receiver=user) | Q(sender=user, receiver=self.request.user)
+            )
 
-        # Update unread messages sent by `user` since the `requesting user` has viewed them after calling this API
-        Message.objects.filter(sender=user, receiver=self.request.user, is_read=False).update(is_read=True)
+            # Update unread messages sent by `user` since the `requesting user` has viewed them after calling this API
+            Message.objects.filter(sender=user, receiver=self.request.user, is_read=False).update(is_read=True)
 
-        return messages
+            return messages
+        except Exception as e:
+            return Response({"error": "An unexpected error occurred: " + str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get_most_recent_sender_status(self, queryset):
         # Get the most recent message in the conversation
