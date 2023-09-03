@@ -1,5 +1,10 @@
 from rest_framework import serializers
-from .models import User, Hashtag, Post, Comment, Follow, Message, Notification
+from .models import Hashtag, Post, Comment, Message, Notification
+from django.contrib.auth import get_user_model
+
+
+# Get the User model configured for this Django project
+User = get_user_model()
 
 
 # Serializers to convert Django model instances into Python data types and vice versa (deserialization)

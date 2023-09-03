@@ -1,5 +1,5 @@
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework import generics, status, serializers
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -16,7 +16,7 @@ from django.core.files.storage import default_storage
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-from core.models import Post, User, Notification, Hashtag
+from core.models import Post, Notification, Hashtag
 from core.serializers import PostSerializer, PostSerializerMinimal,HashtagSerializer, FollowSerializer
 from .api_utility_functions import create_hashtags
 from core.Pagination_Classes.paginations import LargePagination, SmallPagination

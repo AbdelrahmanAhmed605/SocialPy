@@ -1,8 +1,8 @@
+from rest_framework import status, generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
-from rest_framework import status, generics
 from rest_framework.authtoken.models import Token
 from rest_framework.parsers import MultiPartParser
 
@@ -22,6 +22,7 @@ from core.Pagination_Classes.paginations import LargePagination, SmallPagination
 
 # Get the User model configured for this Django project
 User = get_user_model()
+
 
 # Endpoint: List Users: GET /api/users/
 # Endpoint: Create User: POST /api/users/

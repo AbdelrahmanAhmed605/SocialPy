@@ -1,20 +1,25 @@
+from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
 
 # Q object helps build complex queries using logical operators to filter database records based on multiple conditions
 from django.db.models import Q, Max, Case, When, F, DateTimeField
 # Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
 from django.db import transaction
 from django.core.exceptions import PermissionDenied
+from django.contrib.auth import get_user_model
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
-from core.models import Message, User
+from core.models import Message
 from core.serializers import MessageSerializer, UserSerializer, FollowSerializer
-from .api_utility_functions import get_pagination_indeces
+from core.Pagination_Classes.paginations import LargePagination
+
+
+# Get the User model configured for this Django project
+User = get_user_model()
 
 
 # Endpoint: api/messages/send/{receiver_id}
@@ -110,70 +115,78 @@ def delete_message(request, message_id):
     return Response({"message": "Message deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 
-# Endpoint: /api/messages/conversation/{user_id}/?page={}&page_size={}
+# Endpoint: /api/messages/conversation/{user_id}/?page={}
 # API view to get message conversation between 2 users
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_conversation(request, user_id):
-    # Obtain the user the requesting user has the conversation with
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+class ConversationListView(generics.ListAPIView):
+    serializer_class = MessageSerializer
+    pagination_class = LargePagination
+    permission_classes = [IsAuthenticated]
 
-    # Set a default page size of 20 returned datasets per page
-    default_page_size = 20
-    # Utility function to get current page number and page size from the request's query parameters and calculate the pagination slicing indeces
-    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
-    if validation_response:
-        return validation_response
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
 
-    # Get all messages between the requesting user and the receiver
-    messages = Message.objects.filter(
-        Q(sender=request.user, receiver=user) | Q(sender=user, receiver=request.user))[start_index:end_index]
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Message.objects.none()
 
-    # Get the most recent message in the conversation
-    most_recent_message = messages.first()
+        # Fetch all messages between the requesting user and the receiver
+        messages = Message.objects.filter(
+            Q(sender=self.request.user, receiver=user) | Q(sender=user, receiver=self.request.user)
+        )
 
-    # Determine the status of the most recent message for the sender (if the receiver has seen their message or not)
-    most_recent_sender_status = None  # if the requesting user is the receiver then they don't need a status
-    if most_recent_message and most_recent_message.sender == request.user:
-        most_recent_sender_status = {
-            "id": most_recent_message.id,
-            "is_read": most_recent_message.is_read
+        # Update unread messages sent by `user` since the `requesting user` has viewed them after calling this API
+        Message.objects.filter(sender=user, receiver=self.request.user, is_read=False).update(is_read=True)
+
+        return messages
+
+    def get_most_recent_sender_status(self, queryset):
+        # Get the most recent message in the conversation
+        most_recent_message = queryset.first()
+
+        # Determine the status of the most recent message for the sender
+        # (so the sender of the last message can see if their message was sent or is still delivered)
+        most_recent_sender_status = None
+        if most_recent_message and most_recent_message.sender == self.request.user:
+            most_recent_sender_status = {
+                "id": most_recent_message.id,
+                "is_read": most_recent_message.is_read
+            }
+
+        return most_recent_sender_status
+
+    def list(self, request, *args, **kwargs):
+        # Get the messages between the 2 users
+        messages = self.get_queryset()
+        # Paginate the messages to only fetch paginated data from the database
+        paginated_messages = self.paginate_queryset(messages)
+
+        serializer = self.get_serializer(paginated_messages, many=True)
+
+        most_recent_sender_status = self.get_most_recent_sender_status(messages)
+
+        # Return the paginated data along with the status of the most recent message for the sender of the last message
+        response_data = {
+            "most_recent_sender_status": most_recent_sender_status,
+            "messages": serializer.data
         }
 
-    # Update unread messages sent by the `user` since the `requesting user` has viewed them after calling this API
-    Message.objects.filter(sender=user, receiver=request.user, is_read=False).update(is_read=True)
+        return self.get_paginated_response(response_data)
 
-    serializer = MessageSerializer(messages, many=True)
-
-    return Response({
-        "messages": serializer.data,
-        "most_recent_sender_status": most_recent_sender_status,
-    }, status=status.HTTP_200_OK)
-
-
-# Endpoint: /api/messages/conversation-partners/?username={}&page={}&page_size={}
+# Endpoint: /api/messages/conversation-partners/?username={}&page={}
 # API view to get a list of all the user's we have had conversations with or apply a search query to narrow the search
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_and_search_conversation_partners(request):
-    username = request.query_params.get('username')  # Get the username from the search query if applied
+class ConversationPartnerListView(generics.ListAPIView):
+    serializer_class = FollowSerializer
+    pagination_class = LargePagination
+    permission_classes = [IsAuthenticated]
 
-    # Get the pagination slicing indeces
-    default_page_size = 20
-    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
-    if validation_response:
-        return validation_response
+    def get_queryset(self):
+        username = self.request.query_params.get('username')  # Get the username from the search query if applied
 
-    # Check if a search query was applied to view for specific users
-    # last_interaction annotated field used to order the Users by their most recent interaction with the requesting user
-    if username:
-        # Filter conversation partners by username query
+        # Get all users that sent a message to the requesting user or received a message from the requesting user
+        # last_interaction annotated field used to order the Users by their most recent interaction with the requesting user
         conversation_partners = User.objects.filter(
-            Q(received_messages__sender=request.user) | Q(sent_messages__receiver=request.user),
-            username__icontains=username
+            Q(received_messages__sender=self.request.user) | Q(sent_messages__receiver=self.request.user)
         ).annotate(
             last_received=Max('received_messages__created_at'),
             last_sent=Max('sent_messages__created_at')
@@ -183,23 +196,11 @@ def get_and_search_conversation_partners(request):
                 default=F('last_sent'),
                 output_field=DateTimeField()
             )
-        ).distinct().exclude(id=request.user.id).order_by('-last_interaction')[start_index:end_index]
+        ).distinct().exclude(id=self.request.user.id).order_by('-last_interaction')
 
-    else:
-        # Get a paginated list of unique users that the requesting user has had conversations with
-        conversation_partners = User.objects.filter(
-            Q(received_messages__sender=request.user) | Q(sent_messages__receiver=request.user)
-        ).annotate(
-            last_received=Max('received_messages__created_at'),
-            last_sent=Max('sent_messages__created_at')
-        ).annotate(
-            last_interaction=Case(
-                When(last_received__gt=F('last_sent'), then=F('last_received')),
-                default=F('last_sent'),
-                output_field=DateTimeField()
-            )
-        ).distinct().exclude(id=request.user.id).order_by('-last_interaction')[start_index:end_index]
+        # Check if a search query was applied to view for specific users
+        if username:
+            # Filter conversation partners by username query
+            conversation_partners = conversation_partners.filter(username__icontains=username)
 
-    serializer = FollowSerializer(conversation_partners, many=True)
-
-    return Response(serializer.data, status=status.HTTP_200_OK)
+        return conversation_partners
