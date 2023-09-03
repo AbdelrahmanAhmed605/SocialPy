@@ -11,8 +11,10 @@ from django.db.models import Q
 from django.db.models import F
 # Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
 from django.db import transaction
+# Managing file uploads and storage
 from django.core.files.storage import default_storage
 
+# Accessing Django Channels' channel layer for WebSocket integration
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 

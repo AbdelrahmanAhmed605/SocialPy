@@ -6,10 +6,14 @@ from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.parsers import MultiPartParser
 
+# Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
 from django.db import transaction
+# Managing file uploads and storage
 from django.core.files.storage import default_storage
+# Get the User model configured for this Django project
 from django.contrib.auth import get_user_model
 
+# Accessing Django Channels' channel layer for WebSocket integration
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 

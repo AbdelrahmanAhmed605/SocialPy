@@ -1,9 +1,11 @@
 from rest_framework import status
 from rest_framework.response import Response
 
+# lets you directly manipulate database fields within database queries, leading to more efficient operations
 from django.db.models import F
 from django.db import DatabaseError, IntegrityError
 
+# Accessing Django Channels' channel layer for WebSocket integration
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
