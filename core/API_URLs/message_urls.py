@@ -10,8 +10,8 @@ urlpatterns = [
     path('api/messages/delete/<int:message_id>/', message_views.delete_message, name='delete-message'),
 
     # Endpoint: GET /api/messages/conversation/{user_id}/?page={}&page_size={}
-    path('api/messages/conversation/<int:user_id>/', message_views.get_conversation, name='get-conversation'),
+    path('api/messages/conversation/<int:user_id>/', message_views.ConversationListView.as_view(), name='get-conversation'),
 
     # Endpoint: GET /api/messages/conversation-partners/?username={}&page={}&page_size={}
-    path('api/messages/conversation-partners/', message_views.get_and_search_conversation_partners, name='get-conversation-partners'),
+    path('api/messages/conversation-partners/', message_views.ConversationPartnerListView.as_view(), name='get-conversation-partners'),
 ]

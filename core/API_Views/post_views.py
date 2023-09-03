@@ -1,5 +1,5 @@
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework import generics, status, serializers
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -11,14 +11,17 @@ from django.db.models import Q
 from django.db.models import F
 # Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
 from django.db import transaction
+# Managing file uploads and storage
 from django.core.files.storage import default_storage
 
+# Accessing Django Channels' channel layer for WebSocket integration
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-from core.models import Post, User, Notification, Hashtag
-from core.serializers import PostSerializer, HashtagSerializer, FollowSerializer
-from .api_utility_functions import get_pagination_indeces, create_hashtags
+from core.models import Post, Notification, Hashtag
+from core.serializers import PostSerializer, PostSerializerMinimal,HashtagSerializer, FollowSerializer
+from .api_utility_functions import create_hashtags
+from core.Pagination_Classes.paginations import LargePagination, SmallPagination
 
 
 # Endpoint: List Posts: GET /api/posts/
@@ -29,13 +32,11 @@ class PostListCreateView(generics.ListCreateAPIView):
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]  # Only authenticated users can create posts
     parser_classes = [MultiPartParser]
+    pagination_class = LargePagination
 
-    # Customize the serializer data for POST requests by adding the authenticated user's primary key
-    def get_serializer(self, *args, **kwargs):
-        kwargs['context'] = self.get_serializer_context()
-        if self.request.method == 'POST' and 'data' in kwargs:
-            kwargs['data']['user'] = self.request.user.pk
-        return self.serializer_class(*args, **kwargs)
+    # Set the user field of the serializer to the authenticated user
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
     # Custom logic for creating a post
     def create(self, request, *args, **kwargs):
@@ -61,7 +62,7 @@ class PostListCreateView(generics.ListCreateAPIView):
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        self.perform_create(serializer)
 
         # Increment the num_posts counter for the user using the Django F object
         request.user.num_posts = F('num_posts') + 1
@@ -109,6 +110,7 @@ class PostDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
 
         old_media = instance.media
         serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
 
         hashtag_names = []
         index = 0
@@ -120,14 +122,14 @@ class PostDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
         if hashtag_names:
             cleaned_hashtags = [tag.strip() for tag in hashtag_names]
             hashtag_ids = create_hashtags(cleaned_hashtags)
-            request.data['hashtags'] = hashtag_ids
+            # Update the post instance with the processed list of hashtags
+            instance.hashtags.set(hashtag_ids)
 
         # Delete the old media from the AWS S3 bucket if the user is updating it
         new_media = serializer.validated_data.get('media')
         if new_media and old_media:
             default_storage.delete(old_media.name)
 
-        serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
 
         return Response(serializer.data)
@@ -253,94 +255,78 @@ def unlike_post(request, post_id):
     return Response({"message": "Post unliked successfully"}, status=status.HTTP_200_OK)
 
 
-# Endpoint: /api/hashtags/?hashtag={}&page={}&page_size={}
+# Endpoint: /api/hashtags/?hashtag={}&page={}
 # API view to allow users to find hashtag names that are similar to the one in the search query
-@api_view(['GET'])
-def suggest_hashtags(request):
-    hashtag = request.query_params.get('hashtag')  # Get the search query from query parameters
+class SuggestHashtagsView(generics.ListAPIView):
+    serializer_class = HashtagSerializer
+    pagination_class = SmallPagination
+    permission_classes = [IsAuthenticated]
 
-    if not hashtag:
-        return Response({"error": "Please provide a hashtag query parameter"}, status=status.HTTP_400_BAD_REQUEST)
+    def get_queryset(self):
+        hashtag = self.request.query_params.get('hashtag')  # Get the search query from query parameters
 
-    # Set a default page size of 5 returned datasets per page
-    default_page_size = 5
-    # Utility function to get current page number and page size from the request's query parameters and calculate the pagination slicing indeces
-    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
-    if validation_response:
-        return validation_response
+        if not hashtag:
+            return Hashtag.objects.none()
 
-    # Search for hashtag names that are similar to the provided search query
-    suggested_hashtags = Hashtag.objects.filter(name__icontains=hashtag)[start_index:end_index]
+        try:
+            # Search for hashtag names that are similar to the provided search query
+            suggested_hashtags = Hashtag.objects.filter(name__icontains=hashtag)
+            return suggested_hashtags
+        except DatabaseError as e:
+            # Handle database-related errors
+            return Response({"error": f"Database error: {str(e)}"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            # Handle other unexpected errors
+            return Response({"error": "An unexpected error occurred: " + str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    serializer = HashtagSerializer(suggested_hashtags, many=True)
 
-    return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-# Endpoint: /api/hashtag/{hashtag_id}/posts/?page={}&page_size={}
+# Endpoint: /api/hashtag/{hashtag_id}/posts/?page={}
 # API view to allow users to search for posts by a specific hashtag
-@api_view(['GET'])
-def search_hashtag_posts(request, hashtag_id):
-    try:
-        hashtag = Hashtag.objects.get(id=hashtag_id)
-    except Hashtag.DoesNotExist:
-        return Response({"error": "Hashtag not found"}, status=status.HTTP_404_NOT_FOUND)
+class SearchHashtagPostsView(generics.ListAPIView):
+    serializer_class = PostSerializerMinimal
+    pagination_class = LargePagination
+    permission_classes = [IsAuthenticated]
 
-    # Get the pagination slicing indeces
-    default_page_size = 20
-    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
-    if validation_response:
-        return validation_response
+    def get_queryset(self):
+        hashtag_id = self.kwargs['hashtag_id']
+        try:
+            hashtag = Hashtag.objects.get(id=hashtag_id)
+        except Hashtag.DoesNotExist:
+            return Response({"error": "Hashtag not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Search for paginated posts with the specified hashtag and a public visibility
-    matched_posts = Post.objects.filter(hashtags=hashtag, visibility='public')[start_index:end_index]
-    serializer = PostSerializer(matched_posts, many=True, context={'request': request})
+        # Search for paginated posts with the specified hashtag and a public visibility
+        matched_posts = Post.objects.filter(hashtags=hashtag, visibility='public')
 
-    return Response(serializer.data, status=status.HTTP_200_OK)
+        return matched_posts
 
+# Endpoint: /api/explore/posts/?page={}
+# API view to allow users view their explore page (posts created by public accounts the requesting user does not follow)
+class ExplorePageView(generics.ListAPIView):
+    serializer_class = PostSerializer
+    pagination_class = LargePagination
+    permission_classes = [IsAuthenticated]
 
-# Endpoint: /api/explore/posts/?page={}&page_size={}
-# API view to allow users to have an explore page (see posts created by public accounts)
-@api_view(['GET'])
-def explore_page(request):
-    # Get the pagination slicing indeces
-    default_page_size = 20
-    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
-    if validation_response:
-        return validation_response
-
-    # If the user is authenticated, then show paginated posts of public users they do not follow
-    if request.user.is_authenticated:
-        following_users = User.objects.filter(follower__follower=request.user, follower__follow_status='accepted')
+    def get_queryset(self):
+        # user__follower__follower=self.request.user excludes posts made by authors the requesting user is following
         explore_posts = Post.objects.filter(visibility='public').exclude(
-            Q(user__in=following_users) | Q(user=request.user)
-        )[start_index:end_index]
-        serializer = PostSerializer(explore_posts, many=True, context={'request': request})
-    else:
-        # If the user is not authenticated, then show paginated posts of public users
-        explore_posts = Post.objects.filter(visibility='public')[start_index:end_index]
-        serializer = PostSerializer(explore_posts, many=True)
+            Q(user__follower__follower=self.request.user) | Q(user=self.request.user)
+        )
+        return explore_posts
 
-    return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-# Endpoint: /api/post/{post_id}/likers/?page={}&page_size={}
+# Endpoint: /api/post/{post_id}/likers/?page={}
 # API view to get a list of all the users who liked a post
-@api_view(['GET'])
-def post_likers(request, post_id):
-    try:
-        post = Post.objects.get(id=post_id)
-    except Post.DoesNotExist:
-        return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+class PostLikersView(generics.ListAPIView):
+    serializer_class = FollowSerializer
+    pagination_class = LargePagination
+    permission_classes = [IsAuthenticated]
 
-    # Get the pagination slicing indeces
-    default_page_size = 20
-    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
-    if validation_response:
-        return validation_response
+    def get_queryset(self):
+        try:
+            post = Post.objects.get(id=self.kwargs['post_id'])
+        except Post.DoesNotExist:
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    users = post.likes.all()[start_index:end_index]  # Retrieve all users who liked the post
+        users = post.likes.all()
 
-    serializer = FollowSerializer(users, many=True, context={'request': request})
-
-    return Response(serializer.data, status=status.HTTP_200_OK)
+        return users

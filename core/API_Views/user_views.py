@@ -1,20 +1,24 @@
+from rest_framework import status, generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
-from rest_framework import status, generics
 from rest_framework.authtoken.models import Token
 from rest_framework.parsers import MultiPartParser
 
+# Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
 from django.db import transaction
+# Managing file uploads and storage
 from django.core.files.storage import default_storage
+# Get the User model configured for this Django project
 from django.contrib.auth import get_user_model
 
+# Accessing Django Channels' channel layer for WebSocket integration
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 from core.models import Post, Follow, Notification
-from core.serializers import UserSerializer, PostSerializer, FollowSerializer
+from core.serializers import UserSerializer, PostSerializer, PostSerializerMinimal, FollowSerializer
 from core.Custom_Permission_Classes.checkOwner import IsOwnerOrReadOnly
 from .api_utility_functions import update_follow_counters, notify_user
 from core.Pagination_Classes.paginations import LargePagination, SmallPagination
@@ -22,6 +26,7 @@ from core.Pagination_Classes.paginations import LargePagination, SmallPagination
 
 # Get the User model configured for this Django project
 User = get_user_model()
+
 
 # Endpoint: List Users: GET /api/users/
 # Endpoint: Create User: POST /api/users/
@@ -31,6 +36,7 @@ class UserListCreateView(generics.ListCreateAPIView):
     serializer_class = UserSerializer  # Specifies serializer class to use for serializing and deserializing user data
     permission_classes = [AllowAny]  # Allow anyone to view the list and create new users
     parser_classes = [MultiPartParser]
+    pagination_class = LargePagination
 
     # Overriding create method to perform custom logic
     def create(self, request, *args, **kwargs):
@@ -148,18 +154,24 @@ def user_logout(request):
 # Endpoint: /api/feed/?page={}
 # API view to get posts from the users that the current user follows
 class UserFeedView(generics.ListAPIView):
-    serializer_class = PostSerializer  # Set your serializer class here
-    pagination_class = LargePagination  # Use LargePagination for pagination
+    serializer_class = PostSerializer
+    pagination_class = LargePagination
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Get posts created by users the requesting user follows
-        feed_posts = Post.objects.filter(
-            user__follower__follower=self.request.user,
-            user__follower__follow_status='accepted'
-        )
-
-        return feed_posts
+        try:
+            # Get posts created by users the requesting user follows
+            feed_posts = Post.objects.filter(
+                user__follower__follower=self.request.user,
+                user__follower__follow_status='accepted'
+            )
+            return feed_posts
+        except DatabaseError as e:
+            return Response({"error": f"Database error: {str(e)}"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            # Handle other unexpected errors
+            return Response({"error": "An unexpected error occurred: " + str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # Endpoint: /api/user/profile/{user_id}/?page={}
@@ -200,17 +212,25 @@ def user_profile(request, user_id):
     }
 
     if can_view:
-        # Create an instance of custom LargePagination class
-        paginator = LargePagination()
+        try:
+            # Create an instance of custom LargePagination class
+            paginator = LargePagination()
 
-        # Paginate the queryset of the user's posts
-        users_posts = Post.objects.filter(user=user)
-        page = paginator.paginate_queryset(users_posts, request)
+            # Paginate the queryset of the user's posts
+            users_posts = Post.objects.filter(user=user)
+            page = paginator.paginate_queryset(users_posts, request)
 
-        serializer = PostSerializer(page, many=True, context={'request': request})
+            serializer = PostSerializerMinimal(page, many=True, context={'request': request})
 
-        # Update the 'posts' field in response_data with serialized data
-        response_data['posts'] = serializer.data
+            # Update the 'posts' field in response_data with serialized data
+            response_data['posts'] = serializer.data
+        except DatabaseError as e:
+            # Handle database-related errors
+            return Response({"error": f"Database error: {str(e)}"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            # Handle other unexpected errors
+            return Response({"error": "An unexpected error occurred: " + str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response(response_data, status=status.HTTP_200_OK)
 
@@ -291,6 +311,14 @@ class SearchUsersView(generics.ListAPIView):
         if not username:
             return User.objects.none()
 
-        # Search for users based on username
-        queryset = User.objects.filter(username__icontains=username).only('username', 'profile_picture')
-        return queryset
+        try:
+            # Search for users based on username
+            queryset = User.objects.filter(username__icontains=username).only('username', 'profile_picture')
+            return queryset
+        except DatabaseError as e:
+            # Handle database-related errors
+            return Response({"error": f"Database error: {str(e)}"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            # Handle other unexpected errors
+            return Response({"error": "An unexpected error occurred: " + str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)

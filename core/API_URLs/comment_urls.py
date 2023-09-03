@@ -10,5 +10,5 @@ urlpatterns = [
     path('api/comment/<int:comment_id>/', comment_views.delete_comment, name='delete-comment'),
 
     # Endpoint: GET /api/comments/post/{post_id}/?page={}&page_size={}
-    path('api/comments/post/<int:post_id>/', comment_views.get_post_comments, name='get-post-comments'),
+    path('api/comments/post/<int:post_id>/', comment_views.PostCommentListView.as_view(), name='get-post-comments'),
 ]

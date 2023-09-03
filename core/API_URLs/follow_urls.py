@@ -13,8 +13,8 @@ urlpatterns = [
     path('api/unfollow/user/<int:user_id>/', follow_views.unfollow_user, name='unfollow-user'),
 
     # Endpoint: GET /api/follower_list/{user_id}/?page={}&page_size={}
-    path('api/follower_list/<int:user_id>/', follow_views.get_followers, name='get-followers'),
+    path('api/follower_list/<int:user_id>/', follow_views.FollowerListView.as_view(), name='get-followers'),
 
     # Endpoint: /api/following_list/{user_id}/?page={}&page_size={}
-    path('api/following_list/<int:user_id>/', follow_views.get_following, name='get-following'),
+    path('api/following_list/<int:user_id>/', follow_views.FollowingListView.as_view(), name='get-following'),
 ]

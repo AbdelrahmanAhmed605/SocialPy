@@ -19,14 +19,14 @@ urlpatterns = [
     path('api/post/<int:post_id>/unlike/', post_views.unlike_post, name='unlike-post'),
 
     # Endpoint: GET /api/hashtags/?hashtag={}&page={}&page_size={}
-    path('api/hashtags/', post_views.suggest_hashtags, name='suggest-hashtags'),
+    path('api/hashtags/', post_views.SuggestHashtagsView.as_view(), name='suggest-hashtags'),
 
     # Endpoint: GET /api/hashtag/posts/?hashtag={}&page={}&page_size={}
-    path('api/hashtag/<int:hashtag_id>/posts/', post_views.search_hashtag_posts, name='search-hashtag-posts'),
+    path('api/hashtag/<int:hashtag_id>/posts/', post_views.SearchHashtagPostsView.as_view(), name='search-hashtag-posts'),
 
     # Endpoint: GET /api/explore/posts/?page={}&page_size={}
-    path('api/explore/posts/', post_views.explore_page, name='explore-page'),
+    path('api/explore/posts/', post_views.ExplorePageView.as_view(), name='explore-page'),
 
     # Endpoint: GET /api/post/{post_id}/likers/?page={}&page_size={}
-    path('api/post/<int:post_id>/likers/', post_views.post_likers, name='post-likers'),
+    path('api/post/<int:post_id>/likers/', post_views.PostLikersView.as_view(), name='post-likers'),
 ]

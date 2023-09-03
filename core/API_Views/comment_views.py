@@ -1,5 +1,5 @@
+from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -9,12 +9,13 @@ from django.db.models import F
 # Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
 from django.db import transaction
 
+# Accessing Django Channels' channel layer for WebSocket integration
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 from core.models import Post, Comment, Notification
 from core.serializers import CommentSerializer
-from .api_utility_functions import get_pagination_indeces
+from core.Pagination_Classes.paginations import LargePagination
 
 
 # Endpoint: /api/comment/post/{post_id}
@@ -128,22 +129,18 @@ def delete_comment(request, comment_id):
 
 # Endpoint: /api/comments/post/{post_id}/?page={}&page_size={}
 # API view to view all the comments for a specific post
-@api_view(['GET'])
-def get_post_comments(request, post_id):
-    try:
-        post = Post.objects.get(id=post_id)
-    except Post.DoesNotExist:
-        return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+class PostCommentListView(generics.ListAPIView):
+    serializer_class = CommentSerializer
+    pagination_class = LargePagination
+    permission_classes = [IsAuthenticated]
 
-    # Set a default page size of 20 returned datasets per page
-    default_page_size = 20
-    # Utility function to get current page number and page size from the request's query parameters and calculate the pagination slicing indeces
-    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
-    if validation_response:
-        return validation_response
+    def get_queryset(self):
+        post_id = self.kwargs['post_id']
+        try:
+            post = Post.objects.get(id=post_id)
+        except Post.DoesNotExist:
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Access comments for the specified post using the related_name
-    comments = post.post_comments.all()[start_index:end_index]
-    serializer = CommentSerializer(comments, many=True, context={'request': request})
-
-    return Response(serializer.data, status=status.HTTP_200_OK)
+        # Access comments for the specified post using the related_name
+        comments = post.post_comments.all()
+        return comments
