@@ -25,14 +25,15 @@ class HashtagSerializer(serializers.ModelSerializer):
 
 
 class PostSerializer(serializers.ModelSerializer):
-    # Custom field for the user representation with only 'username' and 'profile_picture'
+    # Custom field for the user representation of the author of the post
     user = serializers.SerializerMethodField()
 
-    # Function to customize the representation of the user field
+    # Function to customize the representation of the author of the post
     def get_user(self, post):
         user = post.user  # Get the user associated with the post
         if user:
             return {
+                'user_id': user.id,
                 'username': user.username,
                 'profile_picture': user.profile_picture.url if user.profile_picture else None
             }
@@ -53,6 +54,12 @@ class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = ['id', 'user', 'content', 'media', 'visibility', 'hashtags', 'created_at', 'updated_at', 'like_count', 'comment_count', 'liked_by_user']
+
+
+class PostSerializerMinimal(PostSerializer):
+    class Meta:
+        model = Post
+        fields = ['media']
 
 
 class CommentSerializer(serializers.ModelSerializer):

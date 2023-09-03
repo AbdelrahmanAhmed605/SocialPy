@@ -14,7 +14,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 from core.models import Post, Follow, Notification
-from core.serializers import UserSerializer, PostSerializer, FollowSerializer
+from core.serializers import UserSerializer, PostSerializer, PostSerializerMinimal, FollowSerializer
 from core.Custom_Permission_Classes.checkOwner import IsOwnerOrReadOnly
 from .api_utility_functions import update_follow_counters, notify_user
 from core.Pagination_Classes.paginations import LargePagination, SmallPagination
@@ -148,8 +148,8 @@ def user_logout(request):
 # Endpoint: /api/feed/?page={}
 # API view to get posts from the users that the current user follows
 class UserFeedView(generics.ListAPIView):
-    serializer_class = PostSerializer  # Set your serializer class here
-    pagination_class = LargePagination  # Use LargePagination for pagination
+    serializer_class = PostSerializer
+    pagination_class = LargePagination
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -207,7 +207,7 @@ def user_profile(request, user_id):
         users_posts = Post.objects.filter(user=user)
         page = paginator.paginate_queryset(users_posts, request)
 
-        serializer = PostSerializer(page, many=True, context={'request': request})
+        serializer = PostSerializerMinimal(page, many=True, context={'request': request})
 
         # Update the 'posts' field in response_data with serialized data
         response_data['posts'] = serializer.data
