@@ -92,11 +92,12 @@ class CommentSerializer(serializers.ModelSerializer):
     # Custom field for the user representation with only 'username' and 'profile_picture'
     user = serializers.SerializerMethodField()
 
-    # Function to customize the representation of the user field
-    def get_user(self, post):
-        user = post.user  # Get the user associated with the post
+    # Function to customize the representation of the user field (user associated with the comment)
+    def get_user(self, comment):
+        user = comment.user  # Get the user associated with the comment
         if user:
             return {
+                'id': user.id,
                 'username': user.username,
                 'profile_picture': user.profile_picture.url if user.profile_picture else None
             }

@@ -9,23 +9,6 @@ from asgiref.sync import async_to_sync
 
 from core.models import Notification, Hashtag
 
-# --------------- ALL API VIEWS ---------------
-# Utility Function to calculate pagination indices for API views
-def get_pagination_indeces(request, default_page_size):
-    try:
-        # Get the current page number from the request's query parameters
-        page_number = int(request.query_params.get('page', 1))
-        # Get the current page size from the request's query parameters
-        page_size = int(request.query_params.get('page_size', default_page_size))
-        if page_number <= 0 or page_size <= 0:
-            return None, None, Response({"error": "Invalid page or page_size value"}, status=status.HTTP_400_BAD_REQUEST)
-    except ValueError:
-        return None, None, Response({"error": "Invalid page or page_size value"}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Calculate the slicing indeces from the page number and page size
-    start_index = (page_number - 1) * page_size
-    end_index = start_index + page_size
-    return start_index, end_index, None
 
 # --------------- NOTIFICATION API VIEWS ---------------
 
