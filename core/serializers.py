@@ -122,7 +122,7 @@ class FollowSerializer(serializers.ModelSerializer):
                 follow_instance = requesting_user.following.filter(following=following_user).first()
                 if follow_instance:
                     return follow_instance.follow_status  # return the follow status
-        # If the requesting user is not authenticated, or we do not follow the user
+        # If we do not follow the user
         return False
 
     class Meta:

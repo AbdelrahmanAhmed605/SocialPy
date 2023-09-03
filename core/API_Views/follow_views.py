@@ -1,5 +1,5 @@
+from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -9,13 +9,19 @@ from django.db.models import Q
 from django.db.models import F
 # Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
 from django.db import transaction, DatabaseError, IntegrityError
+from django.contrib.auth import get_user_model
 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-from core.models import User, Follow, Notification
+from core.models import Follow, Notification
 from core.serializers import FollowSerializer
-from .api_utility_functions import get_pagination_indeces, notify_user, update_follow_counters, send_follow_request_notification
+from .api_utility_functions import notify_user, update_follow_counters, send_follow_request_notification
+from core.Pagination_Classes.paginations import LargePagination
+
+
+# Get the User model configured for this Django project
+User = get_user_model()
 
 
 # Endpoint: /api/follow/user/{user_id}
@@ -194,64 +200,53 @@ def unfollow_user(request, user_id):
     return Response({"message": "You have unfollowed this user"}, status=status.HTTP_200_OK)
 
 
-# Endpoint: /api/follower_list/{user_id}/?page={}&page_size={}
+# Endpoint: /api/follower_list/{user_id}/?page={}
 # API view to view a user's follower list
-# Note: we don't have to check if requesting user has access to this list since the user_profile
-#       API view in the user_views already checks for this access
-@api_view(['GET'])
-def get_followers(request, user_id):
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+class FollowerListView(generics.ListAPIView):
+    serializer_class = FollowSerializer
+    pagination_class = LargePagination
+    permission_classes = [IsAuthenticated]
 
-    # Set a default page size of 20 returned datasets per page
-    default_page_size = 20
-    # Utility function to get current page number and page size from the request's query parameters and calculate the pagination slicing indeces
-    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
-    if validation_response:
-        return validation_response
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    try:
-        # Get a paginated list of the user's followers
-        follower_users = User.objects.filter(following__following=user, following__follow_status='accepted')[start_index:end_index]
-
-        serializer = FollowSerializer(follower_users, many=True, context={'request': request})
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    except DatabaseError:
-        return Response({"error": "An error occurred while retrieving follower data"},
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    except Exception as e:
-        return Response({"error": "An unexpected error occurred: " + str(e)},
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        try:
+            # Get a queryset of the user's followers
+            followers = User.objects.filter(following__following=user, following__follow_status='accepted')
+            return followers
+        except DatabaseError:
+            return User.objects.none()
+        except Exception as e:
+            # Handle other unexpected errors
+            return Response({"error": "An unexpected error occurred: " + str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# Endpoint: /api/following_list/{user_id}/?page={}&page_size={}
+# Endpoint: /api/following_list/{user_id}/?page={}
 # API view to view a user's following list
-@api_view(['GET'])
-def get_following(request, user_id):
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+class FollowingListView(generics.ListAPIView):
+    serializer_class = FollowSerializer
+    pagination_class = LargePagination
+    permission_classes = [IsAuthenticated]
 
-    # Get the pagination slicing indeces
-    default_page_size = 20
-    start_index, end_index, validation_response = get_pagination_indeces(request, default_page_size)
-    if validation_response:
-        return validation_response
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    try:
-        # Get a paginated list of the user's that the requesting user follows
-        following_users = User.objects.filter(follower__follower=user, follower__follow_status='accepted')[start_index:end_index]
-
-        serializer = FollowSerializer(following_users, many=True, context={'request': request})
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    except DatabaseError:
-        return Response({"error": "An error occurred while retrieving following data"},
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    except Exception as e:
-        return Response({"error": "An unexpected error occurred: " + str(e)},
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        try:
+            # Get a queryset of the users that the requesting user follows
+            following_users = User.objects.filter(follower__follower=user, follower__follow_status='accepted')
+            return following_users
+        except DatabaseError:
+            return User.objects.none()
+        except Exception as e:
+            # Handle other unexpected errors
+            return Response({"error": "An unexpected error occurred: " + str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)

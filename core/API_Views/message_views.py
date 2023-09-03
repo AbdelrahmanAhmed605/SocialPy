@@ -198,7 +198,7 @@ class ConversationPartnerListView(generics.ListAPIView):
             )
         ).distinct().exclude(id=self.request.user.id).order_by('-last_interaction')
 
-        # Check if a search query was applied to view for specific users
+        # Check if a search query was applied to view for specific users from the result query
         if username:
             # Filter conversation partners by username query
             conversation_partners = conversation_partners.filter(username__icontains=username)
