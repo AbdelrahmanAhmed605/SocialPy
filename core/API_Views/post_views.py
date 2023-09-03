@@ -271,7 +271,7 @@ class SuggestHashtagsView(generics.ListAPIView):
         return suggested_hashtags
 
 
-# Endpoint: /api/hashtag/{hashtag_id}/posts/?page={}&page_size={}
+# Endpoint: /api/hashtag/{hashtag_id}/posts/?page={}
 # API view to allow users to search for posts by a specific hashtag
 class SearchHashtagPostsView(generics.ListAPIView):
     serializer_class = PostSerializerMinimal
@@ -304,7 +304,7 @@ class ExplorePageView(generics.ListAPIView):
         )
         return explore_posts
 
-# Endpoint: /api/post/{post_id}/likers/?page={}&page_size={}
+# Endpoint: /api/post/{post_id}/likers/?page={}
 # API view to get a list of all the users who liked a post
 class PostLikersView(generics.ListAPIView):
     serializer_class = FollowSerializer
