@@ -10,7 +10,7 @@ from django.db.models import Q
 # lets you directly manipulate database fields within database queries, leading to more efficient operations
 from django.db.models import F
 # Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
-from django.db import transaction
+from django.db import transaction, DatabaseError
 # Managing file uploads and storage
 from django.core.files.storage import default_storage
 
@@ -296,7 +296,7 @@ class SearchHashtagPostsView(generics.ListAPIView):
             return Response({"error": "Hashtag not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # Search for paginated posts with the specified hashtag and a public visibility
-        matched_posts = Post.objects.filter(hashtags=hashtag, visibility='public')
+        matched_posts = Post.objects.filter(hashtags=hashtag, visibility='public').only('id', 'media')
 
         return matched_posts
 
@@ -327,6 +327,6 @@ class PostLikersView(generics.ListAPIView):
         except Post.DoesNotExist:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        users = post.likes.all()
+        users = post.likes.only('id', 'username', 'profile_picture')
 
         return users

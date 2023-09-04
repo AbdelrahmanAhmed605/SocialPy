@@ -12,7 +12,6 @@ from django.db import transaction, DatabaseError
 from django.core.files.storage import default_storage
 # Get the User model configured for this Django project
 from django.contrib.auth import get_user_model
-from django.core.cache import cache
 
 # Accessing Django Channels' channel layer for WebSocket integration
 from channels.layers import get_channel_layer
@@ -160,29 +159,18 @@ class UserFeedView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-
-        # Get the current page number from the request's query parameters
-        page = self.request.query_params.get('page')
-
-        if page:
-            cache_key = f'user_feed:{user.id}:page_{page}'
-
-            # Check if the specific page is cached in Redis
-            cached_page = cache.get(cache_key)
-            if cached_page is not None:
-                return cached_page
-
-        # If not cached or no page specified, query the database to build the feed
-        feed_posts = Post.objects.filter(
-            user__follower__follower=user,
-            user__follower__follow_status='accepted'
-        )
-
-        if page:
-            # Cache the specific page for 30 minutes (this TTL be changed based on storage requirements and user needs)
-            cache.set(cache_key, feed_posts, 1800)
-        return feed_posts
+        try:
+            # Get posts created by users the requesting user follows
+            feed_posts = Post.objects.filter(
+                user__follower__follower=user,
+                user__follower__follow_status='accepted'
+            )
+            return feed_posts
+        except DatabaseError as e:
+            return Response({"error": f"Database error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({"error": "An unexpected error occurred: " + str(e)},
+                            status = status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # Endpoint: /api/user/profile/{user_id}/?page={}
