@@ -7,11 +7,12 @@ from rest_framework.authtoken.models import Token
 from rest_framework.parsers import MultiPartParser
 
 # Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
-from django.db import transaction
+from django.db import transaction, DatabaseError
 # Managing file uploads and storage
 from django.core.files.storage import default_storage
 # Get the User model configured for this Django project
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 
 # Accessing Django Channels' channel layer for WebSocket integration
 from channels.layers import get_channel_layer
@@ -159,19 +160,29 @@ class UserFeedView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        try:
-            # Get posts created by users the requesting user follows
-            feed_posts = Post.objects.filter(
-                user__follower__follower=self.request.user,
-                user__follower__follow_status='accepted'
-            )
-            return feed_posts
-        except DatabaseError as e:
-            return Response({"error": f"Database error: {str(e)}"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        except Exception as e:
-            # Handle other unexpected errors
-            return Response({"error": "An unexpected error occurred: " + str(e)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        user = self.request.user
+
+        # Get the current page number from the request's query parameters
+        page = self.request.query_params.get('page')
+
+        if page:
+            cache_key = f'user_feed:{user.id}:page_{page}'
+
+            # Check if the specific page is cached in Redis
+            cached_page = cache.get(cache_key)
+            if cached_page is not None:
+                return cached_page
+
+        # If not cached or no page specified, query the database to build the feed
+        feed_posts = Post.objects.filter(
+            user__follower__follower=user,
+            user__follower__follow_status='accepted'
+        )
+
+        if page:
+            # Cache the specific page for 30 minutes (this TTL be changed based on storage requirements and user needs)
+            cache.set(cache_key, feed_posts, 1800)
+        return feed_posts
 
 
 # Endpoint: /api/user/profile/{user_id}/?page={}
@@ -217,7 +228,7 @@ def user_profile(request, user_id):
             paginator = LargePagination()
 
             # Paginate the queryset of the user's posts
-            users_posts = Post.objects.filter(user=user)
+            users_posts = Post.objects.filter(user=user).only('id', 'media')
             page = paginator.paginate_queryset(users_posts, request)
 
             serializer = PostSerializerMinimal(page, many=True, context={'request': request})
@@ -252,11 +263,11 @@ def change_profile_privacy(request):
 
     # Update visibility of the user's posts
     if new_privacy != old_privacy:
-        user.user_posts.filter(visibility=old_privacy).update(visibility=new_privacy)
+        user.user_posts.filter(visibility=old_privacy).only('id', 'visibility').update(visibility=new_privacy)
 
     # If user changes profile to public, accept all pending follow requests
     if new_privacy == 'public':
-        pending_follow_requests = Follow.objects.filter(following=user, follow_status='pending')
+        pending_follow_requests = Follow.objects.filter(following=user, follow_status='pending').select_related('follower', 'following')
         for follow_request in pending_follow_requests:
             try:
                 with transaction.atomic():
@@ -267,7 +278,7 @@ def change_profile_privacy(request):
                     update_follow_counters(follow_request.following, follow_request.follower)
 
                     # Get the original follow_request notification to update it based on the selected user action
-                    notification = Notification.objects.get(recipient=follow_request.following,
+                    notification = Notification.objects.only('id').get(recipient=follow_request.following,
                                                             sender=follow_request.follower,
                                                             notification_type='follow_request')
 

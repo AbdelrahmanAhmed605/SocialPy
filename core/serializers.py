@@ -64,7 +64,7 @@ class PostSerializer(serializers.ModelSerializer):
 class PostSerializerMinimal(PostSerializer):
     class Meta:
         model = Post
-        fields = ['media']
+        fields = ['id', 'media']
 
 
 class CommentSerializer(serializers.ModelSerializer):
