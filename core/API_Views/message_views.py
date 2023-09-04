@@ -191,7 +191,7 @@ class ConversationPartnerListView(generics.ListAPIView):
 
         # Get all users that sent a message to the requesting user or received a message from the requesting user
         # last_interaction annotated field used to order the Users by their most recent interaction with the requesting user
-        conversation_partners = User.objects.filter(
+        conversation_partners = User.objects.only('id', 'username', 'profile_picture').filter(
             Q(received_messages__sender=self.request.user) | Q(sent_messages__receiver=self.request.user)
         ).annotate(
             last_received=Max('received_messages__created_at'),
