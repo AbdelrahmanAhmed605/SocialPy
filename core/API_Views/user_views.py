@@ -7,7 +7,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.parsers import MultiPartParser
 
 # Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
-from django.db import transaction
+from django.db import transaction, DatabaseError
 # Managing file uploads and storage
 from django.core.files.storage import default_storage
 # Get the User model configured for this Django project
@@ -18,7 +18,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 from core.models import Post, Follow, Notification
-from core.serializers import UserSerializer, PostSerializer, PostSerializerMinimal, FollowSerializer
+from core.serializers import UserSerializer, PostSerializer, PostSerializerMinimal, FollowSerializerMinimal
 from core.Custom_Permission_Classes.checkOwner import IsOwnerOrReadOnly
 from .api_utility_functions import update_follow_counters, notify_user
 from core.Pagination_Classes.paginations import LargePagination, SmallPagination
@@ -93,16 +93,6 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     def perform_update(self, serializer):
         instance = serializer.instance
 
-        # .get() used to return None instead of a KeyError if username/email are not present (since it is partial data)
-        new_username = serializer.validated_data.get('username')
-        new_email = serializer.validated_data.get('email')
-
-        # Check for duplicate username and email before updating the user
-        if new_username and User.objects.exclude(pk=instance.pk).filter(username=new_username).exists():
-            raise ValidationError("Username already exists.")
-        if new_email and User.objects.exclude(pk=instance.pk).filter(email=new_email).exists():
-            raise ValidationError("Email already exists.")
-
         new_profile_picture = serializer.validated_data.get('profile_picture')
 
         # Delete the old profile picture from the AWS S3 bucket if the user is updating it
@@ -162,16 +152,15 @@ class UserFeedView(generics.ListAPIView):
         try:
             # Get posts created by users the requesting user follows
             feed_posts = Post.objects.filter(
-                user__follower__follower=self.request.user,
+                user__follower__follower_id=self.request.user.id,
                 user__follower__follow_status='accepted'
             )
             return feed_posts
         except DatabaseError as e:
-            return Response({"error": f"Database error: {str(e)}"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": f"Database error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
-            # Handle other unexpected errors
             return Response({"error": "An unexpected error occurred: " + str(e)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                            status = status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # Endpoint: /api/user/profile/{user_id}/?page={}
@@ -217,7 +206,7 @@ def user_profile(request, user_id):
             paginator = LargePagination()
 
             # Paginate the queryset of the user's posts
-            users_posts = Post.objects.filter(user=user)
+            users_posts = Post.objects.filter(user_id=user.id).only('id', 'media')
             page = paginator.paginate_queryset(users_posts, request)
 
             serializer = PostSerializerMinimal(page, many=True, context={'request': request})
@@ -252,11 +241,11 @@ def change_profile_privacy(request):
 
     # Update visibility of the user's posts
     if new_privacy != old_privacy:
-        user.user_posts.filter(visibility=old_privacy).update(visibility=new_privacy)
+        user.user_posts.filter(visibility=old_privacy).only('id', 'visibility').update(visibility=new_privacy)
 
     # If user changes profile to public, accept all pending follow requests
     if new_privacy == 'public':
-        pending_follow_requests = Follow.objects.filter(following=user, follow_status='pending')
+        pending_follow_requests = Follow.objects.filter(following_id=user.id, follow_status='pending').select_related('follower', 'following')
         for follow_request in pending_follow_requests:
             try:
                 with transaction.atomic():
@@ -267,8 +256,8 @@ def change_profile_privacy(request):
                     update_follow_counters(follow_request.following, follow_request.follower)
 
                     # Get the original follow_request notification to update it based on the selected user action
-                    notification = Notification.objects.get(recipient=follow_request.following,
-                                                            sender=follow_request.follower,
+                    notification = Notification.objects.only('id').get(recipient_id=follow_request.following.id,
+                                                            sender_id=follow_request.follower.id,
                                                             notification_type='follow_request')
 
                     # Update the original "follow_request" notification to "new_follower"
@@ -301,7 +290,7 @@ def change_profile_privacy(request):
 # Endpoint: /api/search/users/?username={}&page={}
 # API view to search for users
 class SearchUsersView(generics.ListAPIView):
-    serializer_class = FollowSerializer
+    serializer_class = FollowSerializerMinimal
     pagination_class = SmallPagination
     permission_classes = [IsAuthenticated]
 

@@ -14,8 +14,9 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 from core.models import Post, Comment, Notification
-from core.serializers import CommentSerializer
+from core.serializers import CommentSerializer, CommentSerializerMinimal
 from core.Pagination_Classes.paginations import LargePagination
+from .api_utility_functions import remove_notification
 
 
 # Endpoint: /api/comment/post/{post_id}
@@ -39,7 +40,7 @@ def create_comment(request, post_id):
         with transaction.atomic():
             # Create comment for the post
             comment = Comment.objects.create(user=request.user, post=post, content=content)
-            serializer = CommentSerializer(comment, context={'request': request})
+            serializer = CommentSerializerMinimal(comment)
 
             # Increment the counter for the comment count
             post.comment_count = F('comment_count') + 1
@@ -87,7 +88,7 @@ def delete_comment(request, comment_id):
         return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
 
     # Check if the requesting user is the owner of the comment or the owner of the post
-    if comment.user != request.user and comment.post.user != request.user:
+    if comment.user.id != request.user.id and comment.post.user.id != request.user.id:
         raise PermissionDenied("You don't have permission to delete this comment")
 
     try:
@@ -100,7 +101,7 @@ def delete_comment(request, comment_id):
 
             # Fetch the associated 'new_comment' notification
             notification = Notification.objects.filter(
-                notification_comment=comment
+                notification_comment_id=comment.id
             ).first()
 
             # Delete the comment
@@ -112,14 +113,7 @@ def delete_comment(request, comment_id):
                 notification.delete()
 
                 # Remove the notification for the post author via WebSocket
-                channel_layer = get_channel_layer()
-                async_to_sync(channel_layer.group_send)(
-                    f"notifications_{comment.post.user.id}",
-                    {
-                        "type": "remove_notification",
-                        "unique_identifier": notification_id
-                    }
-                )
+                remove_notification(comment.post.user.id, notification_id)
     except Exception as e:
         return Response({"error": "An error occurred while deleting the comment"},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -137,7 +131,7 @@ class PostCommentListView(generics.ListAPIView):
     def get_queryset(self):
         post_id = self.kwargs['post_id']
         try:
-            post = Post.objects.get(id=post_id)
+            post = Post.objects.only('id').get(id=post_id)
         except Post.DoesNotExist:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 

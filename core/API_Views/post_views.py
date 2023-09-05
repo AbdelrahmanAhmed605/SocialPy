@@ -10,7 +10,7 @@ from django.db.models import Q
 # lets you directly manipulate database fields within database queries, leading to more efficient operations
 from django.db.models import F
 # Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
-from django.db import transaction
+from django.db import transaction, DatabaseError
 # Managing file uploads and storage
 from django.core.files.storage import default_storage
 
@@ -20,7 +20,7 @@ from asgiref.sync import async_to_sync
 
 from core.models import Post, Notification, Hashtag
 from core.serializers import PostSerializer, PostSerializerMinimal,HashtagSerializer, FollowSerializer
-from .api_utility_functions import create_hashtags
+from .api_utility_functions import create_hashtags, remove_notification
 from core.Pagination_Classes.paginations import LargePagination, SmallPagination
 
 
@@ -208,7 +208,7 @@ def like_post(request, post_id):
 @permission_classes([IsAuthenticated])
 def unlike_post(request, post_id):
     try:
-        post = Post.objects.get(id=post_id)
+        post = Post.objects.only('id', 'likes', 'user__id').get(id=post_id)
     except Post.DoesNotExist:
         return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -228,10 +228,10 @@ def unlike_post(request, post_id):
 
             # Find the corresponding 'new_like' notification
             notification = Notification.objects.filter(
-                recipient=post.user,
+                recipient_id=post.user_id,
                 sender=request.user,
                 notification_type='new_like',
-                notification_post=post
+                notification_post_id=post.id
             ).first()
 
             # Check if the notification exists
@@ -240,14 +240,7 @@ def unlike_post(request, post_id):
                 notification.delete()  # Delete the notification
 
                 # Remove the notification for the post author via WebSocket
-                channel_layer = get_channel_layer()
-                async_to_sync(channel_layer.group_send)(
-                    f"notifications_{post.user.id}",
-                    {
-                        "type": "remove_notification",
-                        "unique_identifier": notification_id
-                    }
-                )
+                remove_notification(post.user_id, notification_id)
     except Exception as e:
         return Response({"error": "An error occurred while liking the post"},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -296,7 +289,7 @@ class SearchHashtagPostsView(generics.ListAPIView):
             return Response({"error": "Hashtag not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # Search for paginated posts with the specified hashtag and a public visibility
-        matched_posts = Post.objects.filter(hashtags=hashtag, visibility='public')
+        matched_posts = Post.objects.filter(hashtags=hashtag, visibility='public').only('id', 'media')
 
         return matched_posts
 
@@ -327,6 +320,6 @@ class PostLikersView(generics.ListAPIView):
         except Post.DoesNotExist:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        users = post.likes.all()
+        users = post.likes.only('id', 'username', 'profile_picture')
 
         return users

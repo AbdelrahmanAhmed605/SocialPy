@@ -85,15 +85,13 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         # Mark the notification as read if the recipient is the current user
         await self.mark_notification_as_read(unique_identifier)
 
-    # Function to send follow request action (accept or decline) updates to frontend
-    async def notification_follow_request_action(self, event):
-        action = event["action"]  # 'accept' or 'decline'
+    # Function to send accepted follow request updates to frontend Websocket client to make necessary front-end changes
+    async def notification_follow_request_accept(self, event):
         unique_identifier = event["unique_identifier"]
 
         # Send update to the connected frontend clients
         await self.send(text_data=json.dumps({
-            "type": "notification_follow_request_action",
-            "action": action,
+            "type": "notification_follow_request_accept",
             "unique_identifier": unique_identifier,
         }))
 

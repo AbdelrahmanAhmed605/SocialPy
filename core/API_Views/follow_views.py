@@ -18,7 +18,7 @@ from asgiref.sync import async_to_sync
 
 from core.models import Follow, Notification
 from core.serializers import FollowSerializer
-from .api_utility_functions import notify_user, update_follow_counters, send_follow_request_notification
+from .api_utility_functions import notify_user, update_follow_counters, accept_follow_request_notification, remove_notification
 from core.Pagination_Classes.paginations import LargePagination
 
 
@@ -41,7 +41,7 @@ def follow_user(request, user_id):
     follower_user = request.user
 
     # Check if user already follows this user
-    if Follow.objects.filter(follower=follower_user, following=following_user, follow_status='accepted').exists():
+    if Follow.objects.filter(follower_id=follower_user.id, following_id=following_user.id, follow_status='accepted').exists():
         return Response({"error": "You are already following this user"}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
@@ -81,7 +81,7 @@ def follow_user(request, user_id):
 @permission_classes([IsAuthenticated])
 def respond_follow_request(request, follower_id):
     try:
-        follower_user = User.objects.get(id=follower_id)
+        follower_user = User.objects.only('id').get(id=follower_id)
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -90,14 +90,14 @@ def respond_follow_request(request, follower_id):
 
     # Find the Follow model instance for the pending follow request
     try:
-        follow = Follow.objects.get(follower=follower_user, following=following_user, follow_status='pending')
+        follow = Follow.objects.get(follower_id=follower_user.id, following_id=following_user.id, follow_status='pending')
     except Follow.DoesNotExist:
         return Response({"error": "No pending follow request found from this user"}, status=status.HTTP_404_NOT_FOUND)
 
     # Get the requesting users deciding action on the follow request (accept or decline)
     action = request.data.get('action')
     # Get the original follow_request notification to update it based on the selected user action
-    original_notification = Notification.objects.get(recipient=following_user, sender=follower_user, notification_type='follow_request')
+    original_notification = Notification.objects.get(recipient_id=following_user.id, sender_id=follower_user.id, notification_type='follow_request')
 
     if action in ['accept', 'decline']:
         try:
@@ -112,22 +112,25 @@ def respond_follow_request(request, follower_id):
 
                     # Update the original "follow_request" notification to "new_follower"
                     original_notification.notification_type = 'new_follower'
+                    # Save the original notification with the new appropriate notification type
+                    original_notification.save()
 
                     # Create a notification to the user who created the follow request informing them it was accepted
                     notify_user(follower_user, following_user, 'follow_accept', "accepted your follow request")
-                    websocket_action = 'accept'
+
+                    # Notify the user who accepted the follow request via WebSocket (to apply necessary changes to their front-end)
+                    accept_follow_request_notification(original_notification, following_user, 'accept')
                 else:  # 'decline' action
                     # Delete the Follow instance if the user declined the follow request
                     follow.delete()
-                    # Update the original "follow_request" notification to "follow_decline"
-                    original_notification.notification_type = 'follow_decline'
-                    websocket_action = 'decline'
 
-                # Save the original notification with the new appropriate notification type
-                original_notification.save()
+                    notification_id = str(original_notification.id)  # Store the ID for WebSocket use
 
-                # Notify the user who accepted/decline the follow request via WebSocket (to apply necessary changes to their front-end)
-                send_follow_request_notification(original_notification, following_user, websocket_action)
+                    # Delete the original "follow_request" notification
+                    original_notification.delete()
+
+                    # Remove the notification for the use who declined the request via WebSocket
+                    remove_notification(following_user.id, notification_id)
         except Exception as e:
             return Response({"error": "An error occurred while processing the response to the follow request"},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -143,7 +146,7 @@ def respond_follow_request(request, follower_id):
 @permission_classes([IsAuthenticated])
 def unfollow_user(request, user_id):
     try:
-        following_user = User.objects.get(id=user_id)
+        following_user = User.objects.only('id').get(id=user_id)
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -151,7 +154,7 @@ def unfollow_user(request, user_id):
     follower_user = request.user
 
     # Check if requesting user is currently following this user
-    follow = Follow.objects.filter(follower=follower_user, following=following_user).first()
+    follow = Follow.objects.filter(follower_id=follower_user.id, following_id=following_user.id).first()
     if not follow:
         return Response({"error": "You are not following this user"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -173,8 +176,8 @@ def unfollow_user(request, user_id):
 
             # Fetch the associated "follow_request" or "new_follower" notification
             notification = Notification.objects.filter(
-                Q(sender=follower_user, recipient=following_user, notification_type='follow_request') |
-                Q(sender=follower_user, recipient=following_user, notification_type='new_follower')
+                Q(sender_id=follower_user.id, recipient_id=following_user.id, notification_type='follow_request') |
+                Q(sender_id=follower_user.id, recipient_id=following_user.id, notification_type='new_follower')
             ).first()
 
             # Check if the notification exists
@@ -212,13 +215,13 @@ class FollowerListView(generics.ListAPIView):
     def get_queryset(self):
         user_id = self.kwargs['user_id']
         try:
-            user = User.objects.get(id=user_id)
+            user = User.objects.only('id').get(id=user_id)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
         try:
             # Get a queryset of the user's followers
-            followers = User.objects.filter(following__following=user, following__follow_status='accepted')
+            followers = User.objects.filter(following__following_id=user.id, following__follow_status='accepted')
             return followers
         except DatabaseError:
             return User.objects.none()
@@ -238,13 +241,13 @@ class FollowingListView(generics.ListAPIView):
     def get_queryset(self):
         user_id = self.kwargs['user_id']
         try:
-            user = User.objects.get(id=user_id)
+            user = User.objects.only('id').get(id=user_id)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
         try:
             # Get a queryset of the users that the requesting user follows
-            following_users = User.objects.filter(follower__follower=user, follower__follow_status='accepted')
+            following_users = User.objects.filter(follower__follower_id=user.id, follower__follow_status='accepted')
             return following_users
         except DatabaseError:
             return User.objects.none()
