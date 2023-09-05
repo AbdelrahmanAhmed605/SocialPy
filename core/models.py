@@ -12,6 +12,10 @@ def user_profile_picture_upload(instance, filename):
 
 # Define a custom User model that extends AbstractUser
 class User(AbstractUser):
+    email = models.EmailField(max_length=255, unique=True,
+                              error_messages={'unique': ("That email has already been used.")})
+    username = models.CharField(max_length=255, unique=True,
+                                error_messages={'unique': ("A user with that username already exists.")})
     # Additional fields for user profiles
     profile_picture = models.ImageField(upload_to=user_profile_picture_upload, null=True, blank=True)  # Profile picture for the user
     bio = models.TextField(max_length=300, blank=True)  # Short bio or description for the user

@@ -93,16 +93,6 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     def perform_update(self, serializer):
         instance = serializer.instance
 
-        # .get() used to return None instead of a KeyError if username/email are not present (since it is partial data)
-        new_username = serializer.validated_data.get('username')
-        new_email = serializer.validated_data.get('email')
-
-        # Check for duplicate username and email before updating the user
-        if new_username and User.objects.exclude(pk=instance.pk).filter(username=new_username).exists():
-            raise ValidationError("Username already exists.")
-        if new_email and User.objects.exclude(pk=instance.pk).filter(email=new_email).exists():
-            raise ValidationError("Email already exists.")
-
         new_profile_picture = serializer.validated_data.get('profile_picture')
 
         # Delete the old profile picture from the AWS S3 bucket if the user is updating it
