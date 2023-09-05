@@ -208,7 +208,7 @@ def like_post(request, post_id):
 @permission_classes([IsAuthenticated])
 def unlike_post(request, post_id):
     try:
-        post = Post.objects.get(id=post_id)
+        post = Post.objects.only('id', 'likes', 'user__id').get(id=post_id)
     except Post.DoesNotExist:
         return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -228,10 +228,10 @@ def unlike_post(request, post_id):
 
             # Find the corresponding 'new_like' notification
             notification = Notification.objects.filter(
-                recipient=post.user,
+                recipient_id=post.user_id,
                 sender=request.user,
                 notification_type='new_like',
-                notification_post=post
+                notification_post_id=post.id
             ).first()
 
             # Check if the notification exists
@@ -242,7 +242,7 @@ def unlike_post(request, post_id):
                 # Remove the notification for the post author via WebSocket
                 channel_layer = get_channel_layer()
                 async_to_sync(channel_layer.group_send)(
-                    f"notifications_{post.user.id}",
+                    f"notifications_{post.user_id}",
                     {
                         "type": "remove_notification",
                         "unique_identifier": notification_id
