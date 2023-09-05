@@ -162,7 +162,7 @@ class UserFeedView(generics.ListAPIView):
         try:
             # Get posts created by users the requesting user follows
             feed_posts = Post.objects.filter(
-                user__follower__follower=user,
+                user__follower__follower_id=self.request.user.id,
                 user__follower__follow_status='accepted'
             )
             return feed_posts
@@ -216,7 +216,7 @@ def user_profile(request, user_id):
             paginator = LargePagination()
 
             # Paginate the queryset of the user's posts
-            users_posts = Post.objects.filter(user=user).only('id', 'media')
+            users_posts = Post.objects.filter(user_id=user.id).only('id', 'media')
             page = paginator.paginate_queryset(users_posts, request)
 
             serializer = PostSerializerMinimal(page, many=True, context={'request': request})
@@ -255,7 +255,7 @@ def change_profile_privacy(request):
 
     # If user changes profile to public, accept all pending follow requests
     if new_privacy == 'public':
-        pending_follow_requests = Follow.objects.filter(following=user, follow_status='pending').select_related('follower', 'following')
+        pending_follow_requests = Follow.objects.filter(following_id=user.id, follow_status='pending').select_related('follower', 'following')
         for follow_request in pending_follow_requests:
             try:
                 with transaction.atomic():
@@ -266,8 +266,8 @@ def change_profile_privacy(request):
                     update_follow_counters(follow_request.following, follow_request.follower)
 
                     # Get the original follow_request notification to update it based on the selected user action
-                    notification = Notification.objects.only('id').get(recipient=follow_request.following,
-                                                            sender=follow_request.follower,
+                    notification = Notification.objects.only('id').get(recipient_id=follow_request.following.id,
+                                                            sender_id=follow_request.follower.id,
                                                             notification_type='follow_request')
 
                     # Update the original "follow_request" notification to "new_follower"
