@@ -18,7 +18,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 from core.models import Post, Follow, Notification
-from core.serializers import UserSerializer, PostSerializer, PostSerializerMinimal, FollowSerializer
+from core.serializers import UserSerializer, PostSerializer, PostSerializerMinimal, FollowSerializerMinimal
 from core.Custom_Permission_Classes.checkOwner import IsOwnerOrReadOnly
 from .api_utility_functions import update_follow_counters, notify_user
 from core.Pagination_Classes.paginations import LargePagination, SmallPagination
@@ -300,7 +300,7 @@ def change_profile_privacy(request):
 # Endpoint: /api/search/users/?username={}&page={}
 # API view to search for users
 class SearchUsersView(generics.ListAPIView):
-    serializer_class = FollowSerializer
+    serializer_class = FollowSerializerMinimal
     pagination_class = SmallPagination
     permission_classes = [IsAuthenticated]
 

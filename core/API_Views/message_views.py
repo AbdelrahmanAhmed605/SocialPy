@@ -16,7 +16,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
 from core.models import Message
-from core.serializers import MessageSerializer, UserSerializer, FollowSerializer
+from core.serializers import MessageSerializer, UserSerializer, FollowSerializerMinimal
 from core.Pagination_Classes.paginations import LargePagination
 
 
@@ -182,7 +182,7 @@ class ConversationListView(generics.ListAPIView):
 # Endpoint: /api/messages/conversation-partners/?username={}&page={}
 # API view to get a list of all the user's we have had conversations with or apply a search query to narrow the search
 class ConversationPartnerListView(generics.ListAPIView):
-    serializer_class = FollowSerializer
+    serializer_class = FollowSerializerMinimal
     pagination_class = LargePagination
     permission_classes = [IsAuthenticated]
 

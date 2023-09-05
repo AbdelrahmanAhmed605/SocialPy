@@ -78,7 +78,7 @@ class CommentSerializer(serializers.ModelSerializer):
             # Check if the requesting user is the owner of the comment or the owner of the post
             user = self.context['request'].user
             if user.is_authenticated:
-                return comment.user == user or comment.post.user == user
+                return comment.user.id == user.id or comment.post.user.id == user.id
         return False
 
     def get_can_edit(self, comment):
@@ -86,7 +86,7 @@ class CommentSerializer(serializers.ModelSerializer):
             # Check if the requesting user is the owner of the comment
             user = self.context['request'].user
             if user.is_authenticated:
-                return comment.user == user
+                return comment.user.id == user.id
         return False
 
     # Custom field for the user representation with only 'username' and 'profile_picture'
@@ -108,6 +108,12 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'post', 'content', 'created_at', 'can_edit', 'can_delete']
 
 
+class CommentSerializerMinimal(CommentSerializer):
+    class Meta:
+        model = Comment
+        fields = ['id', 'user', 'post', 'content', 'created_at']
+
+
 class FollowSerializer(serializers.ModelSerializer):
     # Custom field to indicate the follow status of the requesting user to the viewed users
     requesting_user_follow_status = serializers.SerializerMethodField()
@@ -120,7 +126,7 @@ class FollowSerializer(serializers.ModelSerializer):
             if requesting_user.is_authenticated:
                 if requesting_user == following_user:
                     return "self"
-                follow_instance = requesting_user.following.filter(following=following_user).first()
+                follow_instance = requesting_user.following.filter(following_id=following_user.id).first()
                 if follow_instance:
                     return follow_instance.follow_status  # return the follow status
         # If we do not follow the user
@@ -129,6 +135,12 @@ class FollowSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'profile_picture', 'requesting_user_follow_status']
+
+
+class FollowSerializerMinimal(FollowSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'profile_picture']
 
 
 class MessageSerializer(serializers.ModelSerializer):

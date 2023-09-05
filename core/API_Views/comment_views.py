@@ -14,7 +14,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 from core.models import Post, Comment, Notification
-from core.serializers import CommentSerializer
+from core.serializers import CommentSerializer, CommentSerializerMinimal
 from core.Pagination_Classes.paginations import LargePagination
 
 
@@ -39,7 +39,7 @@ def create_comment(request, post_id):
         with transaction.atomic():
             # Create comment for the post
             comment = Comment.objects.create(user=request.user, post=post, content=content)
-            serializer = CommentSerializer(comment, context={'request': request})
+            serializer = CommentSerializerMinimal(comment)
 
             # Increment the counter for the comment count
             post.comment_count = F('comment_count') + 1
