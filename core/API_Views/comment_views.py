@@ -87,7 +87,7 @@ def delete_comment(request, comment_id):
         return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
 
     # Check if the requesting user is the owner of the comment or the owner of the post
-    if comment.user != request.user and comment.post.user != request.user:
+    if comment.user.id != request.user.id and comment.post.user.id != request.user.id:
         raise PermissionDenied("You don't have permission to delete this comment")
 
     try:
@@ -100,7 +100,7 @@ def delete_comment(request, comment_id):
 
             # Fetch the associated 'new_comment' notification
             notification = Notification.objects.filter(
-                notification_comment=comment
+                notification_comment_id=comment.id
             ).first()
 
             # Delete the comment
@@ -137,7 +137,7 @@ class PostCommentListView(generics.ListAPIView):
     def get_queryset(self):
         post_id = self.kwargs['post_id']
         try:
-            post = Post.objects.get(id=post_id)
+            post = Post.objects.only('id').get(id=post_id)
         except Post.DoesNotExist:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
