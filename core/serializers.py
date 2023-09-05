@@ -150,6 +150,44 @@ class MessageSerializer(serializers.ModelSerializer):
 
 
 class NotificationSerializer(serializers.ModelSerializer):
+    # Custom field for the user representation of the sender of a notification
+    sender = serializers.SerializerMethodField()
+    # Custom field for the post representation within a notification
+    notification_post = serializers.SerializerMethodField()
+    # Custom field for the comment representation within a notification
+    notification_comment = serializers.SerializerMethodField()
+
+    # Function to customize the representation of the sender of a notification
+    def get_sender(self, notification):
+        sender = notification.sender  # Get the sender associated with the notification
+        if sender:
+            return {
+                'user_id': sender.id,
+                'username': sender.username,
+                'profile_picture': sender.profile_picture.url if sender.profile_picture else None
+            }
+        return None
+
+    # Function to customize the representation of a post for a notification
+    def get_notification_post(self, notification):
+        post = notification.notification_post  # Get the post associated with the notification
+        if post:
+            return {
+                'post_id': post.id,
+                'media': post.media.url if post.media else None,
+            }
+        return None
+
+    # Function to customize the representation of a comment for a notification
+    def get_notification_comment(self, notification):
+        comment = notification.notification_comment  # Get the post associated with the notification
+        if comment:
+            return {
+                'comment_id': comment.id,
+                'content': comment.content,
+            }
+        return None
+
     class Meta:
         model = Notification
         fields = '__all__'
