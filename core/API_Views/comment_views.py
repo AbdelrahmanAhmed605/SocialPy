@@ -16,6 +16,7 @@ from asgiref.sync import async_to_sync
 from core.models import Post, Comment, Notification
 from core.serializers import CommentSerializer, CommentSerializerMinimal
 from core.Pagination_Classes.paginations import LargePagination
+from .api_utility_functions import remove_notification
 
 
 # Endpoint: /api/comment/post/{post_id}
@@ -112,14 +113,7 @@ def delete_comment(request, comment_id):
                 notification.delete()
 
                 # Remove the notification for the post author via WebSocket
-                channel_layer = get_channel_layer()
-                async_to_sync(channel_layer.group_send)(
-                    f"notifications_{comment.post.user.id}",
-                    {
-                        "type": "remove_notification",
-                        "unique_identifier": notification_id
-                    }
-                )
+                remove_notification(comment.post.user.id, notification_id)
     except Exception as e:
         return Response({"error": "An error occurred while deleting the comment"},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)

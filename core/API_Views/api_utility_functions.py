@@ -14,6 +14,17 @@ from core.models import Notification, Hashtag
 
 # --------------- NOTIFICATION API VIEWS ---------------
 
+# Remove a specific notification from a user's WebSocket
+def remove_notification(user_id, notification_id):
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"notifications_{user_id}",
+        {
+            "type": "remove_notification",
+            "unique_identifier": notification_id
+        }
+    )
+
 # Utility function to handle follow-related notifications
 def notify_user(notification_recipient, notification_sender, notification_type, message):
     # Create a notification for the recipient of the notification action
@@ -72,12 +83,12 @@ def create_hashtags(hashtag_names):
 
 # --------------- Follow API VIEWS ---------------
 
-def send_follow_request_notification(notification, user, action):
+def accept_follow_request_notification(notification, user, action):
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
         f"notifications_{user.id}",
         {
-            "type": "notification_follow_request_action",
+            "type": "notification_follow_request_accept",
             "action": action,
             "unique_identifier": str(notification.id),
         }

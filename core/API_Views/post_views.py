@@ -20,7 +20,7 @@ from asgiref.sync import async_to_sync
 
 from core.models import Post, Notification, Hashtag
 from core.serializers import PostSerializer, PostSerializerMinimal,HashtagSerializer, FollowSerializer
-from .api_utility_functions import create_hashtags
+from .api_utility_functions import create_hashtags, remove_notification
 from core.Pagination_Classes.paginations import LargePagination, SmallPagination
 
 
@@ -240,14 +240,7 @@ def unlike_post(request, post_id):
                 notification.delete()  # Delete the notification
 
                 # Remove the notification for the post author via WebSocket
-                channel_layer = get_channel_layer()
-                async_to_sync(channel_layer.group_send)(
-                    f"notifications_{post.user_id}",
-                    {
-                        "type": "remove_notification",
-                        "unique_identifier": notification_id
-                    }
-                )
+                remove_notification(post.user_id, notification_id)
     except Exception as e:
         return Response({"error": "An error occurred while liking the post"},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
