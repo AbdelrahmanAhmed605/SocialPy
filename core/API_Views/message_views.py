@@ -128,18 +128,18 @@ class ConversationListView(generics.ListAPIView):
         user_id = self.kwargs['user_id']
 
         try:
-            user = User.objects.get(id=user_id)
+            user = User.objects.only('id').get(id=user_id)
         except User.DoesNotExist:
             return Message.objects.none()
 
         try:
             # Fetch all messages between the requesting user and the receiver
             messages = Message.objects.filter(
-                Q(sender=self.request.user, receiver=user) | Q(sender=user, receiver=self.request.user)
+                Q(sender_id=self.request.user.id, receiver_id=user.id) | Q(sender_id=user.id, receiver_id=self.request.user.id)
             )
 
             # Update unread messages sent by `user` since the `requesting user` has viewed them after calling this API
-            Message.objects.filter(sender=user, receiver=self.request.user, is_read=False).update(is_read=True)
+            Message.objects.filter(sender_id=user.id, receiver_id=self.request.user.id, is_read=False).update(is_read=True)
 
             return messages
         except Exception as e:
@@ -153,7 +153,7 @@ class ConversationListView(generics.ListAPIView):
         # Determine the status of the most recent message for the sender
         # (so the sender of the last message can see if their message was sent or is still delivered)
         most_recent_sender_status = None
-        if most_recent_message and most_recent_message.sender == self.request.user:
+        if most_recent_message and most_recent_message.sender.id == self.request.user.id:
             most_recent_sender_status = {
                 "id": most_recent_message.id,
                 "is_read": most_recent_message.is_read
@@ -192,7 +192,7 @@ class ConversationPartnerListView(generics.ListAPIView):
         # Get all users that sent a message to the requesting user or received a message from the requesting user
         # last_interaction annotated field used to order the Users by their most recent interaction with the requesting user
         conversation_partners = User.objects.only('id', 'username', 'profile_picture').filter(
-            Q(received_messages__sender=self.request.user) | Q(sent_messages__receiver=self.request.user)
+            Q(received_messages__sender_id=self.request.user.id) | Q(sent_messages__receiver_id=self.request.user.id)
         ).annotate(
             last_received=Max('received_messages__created_at'),
             last_sent=Max('sent_messages__created_at')
