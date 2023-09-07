@@ -50,6 +50,9 @@ INSTALLED_APPS = [
     'channels',
     'daphne',
 
+    # For Frontend Integration
+    'corsheaders',
+
     # Django
     'django.contrib.admin',
     'django.contrib.auth',
@@ -67,6 +70,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'socialpy.urls'
@@ -74,7 +78,7 @@ ROOT_URLCONF = 'socialpy.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'socialpy-frontend', 'dist')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -146,7 +150,7 @@ DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
 
 # To serve static files directly from S3
-STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
+# STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
 
 # ---------- CACHING ----------
 
@@ -207,7 +211,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'socialpy-frontend', 'dist'),
+]
+# Allow requests from any origin during development
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_HEADERS = True
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
