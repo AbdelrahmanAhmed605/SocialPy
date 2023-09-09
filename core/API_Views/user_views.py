@@ -7,7 +7,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.parsers import MultiPartParser
 
 # Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
-from django.db import transaction, DatabaseError
+from django.db import transaction, DatabaseError, IntegrityError
 # Managing file uploads and storage
 from django.core.files.storage import default_storage
 # Get the User model configured for this Django project
@@ -62,7 +62,19 @@ class UserListCreateView(generics.ListCreateAPIView):
         # Create the user instance using all fields from request data
         user = User(**serializer.validated_data)
         user.set_password(password)  # Hash the password
-        user.save()
+        try:
+            user.save()
+        except IntegrityError as e:
+            # Check if it's an email or username duplicate error
+            if 'unique constraint' in str(e):
+                if 'Key (username)' in str(e):
+                    return Response({"username": ["A user with that username already exists."]}, status=status.HTTP_400_BAD_REQUEST)
+                elif 'Key (email)' in str(e):
+                    return Response({"email": ["That email has already been used."]}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                print("\nthis is the error:", e)
+                # Handle other IntegrityErrors if necessary
+                raise e  # Raise the original IntegrityError
 
         # Save the serializer after creating the user
         serializer.instance = user

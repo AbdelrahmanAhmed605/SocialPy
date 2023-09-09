@@ -22,7 +22,17 @@ class User(AbstractUser):
     profile_privacy = models.CharField(max_length=10, choices=[('public', 'Public'), ('private', 'Private')], default='public')  # Privacy setting for user profile
     num_followers = models.PositiveIntegerField(default=0)  # counter to keep track of users num of followers
     num_following = models.PositiveIntegerField(default=0)  # counter to keep track of num of users a user is following
+
     num_posts = models.PositiveIntegerField(default=0)  # counter to keep track of num of posts made by the user
+    class Meta:
+        indexes = [
+            models.Index(fields=['username']),
+        ]
+
+    def save(self, *args, **kwargs):
+        self.email = self.email.lower()
+        self.username = self.username.lower()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.username
