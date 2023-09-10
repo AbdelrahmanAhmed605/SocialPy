@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from rest_framework.parsers import MultiPartParser
+from rest_framework.parsers import MultiPartParser, JSONParser
 
 # Atomic transactions ensure that a series of database operations are completed together or not at all, maintaining data integrity.
 from django.db import transaction, DatabaseError, IntegrityError
@@ -35,7 +35,7 @@ class UserListCreateView(generics.ListCreateAPIView):
     queryset = User.objects.all()  # Retrieves all the users from the database
     serializer_class = UserSerializer  # Specifies serializer class to use for serializing and deserializing user data
     permission_classes = [AllowAny]  # Allow anyone to view the list and create new users
-    parser_classes = [MultiPartParser]
+    parser_classes = [MultiPartParser, JSONParser]
     pagination_class = LargePagination
 
     # Overriding create method to perform custom logic
