@@ -10,6 +10,8 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { IonicModule } from '@ionic/angular';
 
+import { UserService } from './api-services/user/user/user.service';
+
 import { AppComponent } from './app.component';
 import { HomeComponent } from './home/home.component';
 import { UserSignupComponent } from './user-signup/user-signup.component';
@@ -30,11 +32,11 @@ import { UserLoginComponent } from './user-login/user-login.component';
     BrowserAnimationsModule,
 
     IonicModule.forRoot(),
-    
+
     FormsModule,
     ReactiveFormsModule,
   ],
-  providers: [],
+  providers: [UserService],
   bootstrap: [AppComponent],
 })
 export class AppModule {}
