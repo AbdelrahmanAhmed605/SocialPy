@@ -44,6 +44,14 @@ form {
   margin-bottom: 30px;
 }
 
+.errorMessages {
+  margin-top: 2%;
+}
+
+.form-button {
+  margin-top: 2%;
+}
+
 img {
   height: 100vh;
   object-fit: contain;
