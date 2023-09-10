@@ -14,4 +14,10 @@ export class UserService {
     // Make the POST request with userData
     return this.http.post(this.apiUrl, userData, { withCredentials: true });
   }
+
+  loginUser(userData: any): Observable<any> {
+    // Make a POST request to the login route
+    const loginUrl = 'http://127.0.0.1:8000/api/login/';
+    return this.http.post(loginUrl, userData, { withCredentials: true });
+  }
 }

@@ -1,0 +1,69 @@
+<ion-grid>
+    <ion-row>
+        <ion-col size-lg="auto" size-xs="0">
+            <img src="https://images.unsplash.com/photo-1523920403368-d489f159d2b7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1964&q=80"
+                alt="Image" />
+        </ion-col>
+
+        <ion-col>
+            <div class="container">
+                <ion-header class="ion-no-border">
+                    <ion-toolbar color="toolbar">
+                        <ion-title>SocialPy</ion-title>
+                    </ion-toolbar>
+                </ion-header>
+                <div class="content">
+                    <div class="welcome-message">
+                        <h2>Welcome Back</h2>
+                        <p>Login to your SocialPy account and start sharing your moments with the world.</p>
+                    </div>
+
+                    <form (ngSubmit)="login()" [formGroup]="loginForm">
+                        <ion-item>
+                            <ion-label position="floating">Username</ion-label>
+                            <ion-input formControlName="username" (input)="loginFieldEdited = true"></ion-input>
+                        </ion-item>
+                        <div class="errorMessages" *ngIf="formSubmitted && loginForm?.get('username')?.invalid">
+                            <ion-text color="danger" *ngIf="loginForm?.get('username')?.hasError('required')">
+                                <ion-icon name="alert-circle-outline"></ion-icon>
+                                {{ validationMessages.username.required }}
+                            </ion-text>
+                            <ion-text color="danger" *ngIf="loginForm?.get('username')?.hasError('maxlength')">
+                                <ion-icon name="alert-circle-outline"></ion-icon>
+                                {{ validationMessages.username.maxLength }}
+                            </ion-text>
+                        </div>
+                        <ion-item>
+                            <ion-label position="floating">Password</ion-label>
+                            <ion-input type="password" formControlName="password"
+                                (input)="loginFieldEdited = true"></ion-input>
+                        </ion-item>
+                        <div class="errorMessages" *ngIf="formSubmitted && loginForm?.get('password')?.invalid">
+                            <ion-text color="danger" *ngIf="loginForm?.get('password')?.hasError('required')">
+                                <ion-icon name="alert-circle-outline"></ion-icon>
+                                {{ validationMessages.password.required }}
+                            </ion-text>
+                        </div>
+
+                        <div class="errorMessages">
+                            <ion-text color="danger" *ngIf="loginError && !loginFieldEdited">
+                                <ion-icon name="alert-circle-outline"></ion-icon>{{ loginError }}
+                            </ion-text>
+                            <ion-text color="danger" *ngIf="generalError && !loginFieldEdited">
+                                <ion-icon name="alert-circle-outline"></ion-icon>{{ generalError }}
+                            </ion-text>
+                        </div>
+
+                        <div class="form-button">
+                            <ion-button shape="round" expand="full" fill="solid" type="submit">Log In</ion-button>
+                        </div>
+                    </form>
+                    <p>
+                        Don't have an account yet?
+                        <span class="signup-link" (click)="goToSignupPage()">Create an account</span>
+                    </p>
+                </div>
+            </div>
+        </ion-col>
+    </ion-row>
+</ion-grid>
