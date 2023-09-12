@@ -32,21 +32,25 @@ class HashtagSerializer(serializers.ModelSerializer):
 class PostSerializer(serializers.ModelSerializer):
     # Custom field for the user representation of the author of the post
     user = serializers.SerializerMethodField()
-
     # Function to customize the representation of the author of the post
     def get_user(self, post):
         user = post.user  # Get the user associated with the post
         if user:
             return {
-                'user_id': user.id,
+                'id': user.id,
                 'username': user.username,
                 'profile_picture': user.profile_picture.url if user.profile_picture else None
             }
         return None
 
+    # Custom field for the Hashtags representation associated with a post
+    hashtags = serializers.SerializerMethodField()
+    # Function to customize the representation of the hashtags associated with a post
+    def get_hashtags(self, post):
+        return [{'id': hashtag.id, 'name': hashtag.name} for hashtag in post.hashtags.all()]
+
     # Custom field to indicate if the requesting user has liked the post
     liked_by_user = serializers.SerializerMethodField()
-
     # Function that checks if a requesting user liked the post that is being retrieved
     # This will be used on the front end to provide indication to users if they liked a post or not
     def get_liked_by_user(self, post):
@@ -162,7 +166,7 @@ class NotificationSerializer(serializers.ModelSerializer):
         sender = notification.sender  # Get the sender associated with the notification
         if sender:
             return {
-                'user_id': sender.id,
+                'id': sender.id,
                 'username': sender.username,
                 'profile_picture': sender.profile_picture.url if sender.profile_picture else None
             }
@@ -173,7 +177,7 @@ class NotificationSerializer(serializers.ModelSerializer):
         post = notification.notification_post  # Get the post associated with the notification
         if post:
             return {
-                'post_id': post.id,
+                'id': post.id,
                 'media': post.media.url if post.media else None,
             }
         return None
@@ -183,7 +187,7 @@ class NotificationSerializer(serializers.ModelSerializer):
         comment = notification.notification_comment  # Get the post associated with the notification
         if comment:
             return {
-                'comment_id': comment.id,
+                'id': comment.id,
                 'content': comment.content,
             }
         return None

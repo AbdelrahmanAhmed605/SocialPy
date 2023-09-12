@@ -52,7 +52,8 @@ class PostListCreateView(generics.ListCreateAPIView):
         # create_hashtags is a utility function that retrieves or creates provided hashtags (to ensure no duplicate hashtags are made)
         hashtag_ids = create_hashtags(cleaned_hashtags)
 
-        request.data.setlist('hashtags', hashtag_ids)
+        mutable_data = request.data.copy()  # Create a mutable copy of request.data
+        mutable_data.setlist('hashtags', hashtag_ids)
 
         # Check the requesting user's profile_privacy
         user_profile_privacy = request.user.profile_privacy
@@ -60,7 +61,7 @@ class PostListCreateView(generics.ListCreateAPIView):
         if user_profile_privacy == 'private':
             request.data['visibility'] = 'private'
 
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=mutable_data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
 
