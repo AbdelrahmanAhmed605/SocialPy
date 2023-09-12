@@ -9,6 +9,7 @@ import { AppRoutingModule } from './app-routing.module';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { IonicModule } from '@ionic/angular';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 
 import { UserService } from './api-services/user/user/user.service';
 
@@ -32,6 +33,7 @@ import { UserLoginComponent } from './user-login/user-login.component';
     BrowserAnimationsModule,
 
     IonicModule.forRoot(),
+    FontAwesomeModule,
 
     FormsModule,
     ReactiveFormsModule,
