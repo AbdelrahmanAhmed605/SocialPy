@@ -24,6 +24,10 @@
     "@fortawesome/free-regular-svg-icons": "^6.4.0",
     "@fortawesome/free-solid-svg-icons": "^6.4.0",
     "@ionic/angular": "^7.3.3",
+    "@ngrx/effects": "^16.2.0",
+    "@ngrx/entity": "^16.2.0",
+    "@ngrx/store": "^16.2.0",
+    "@ngrx/store-devtools": "^16.2.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.13.0"
@@ -33,6 +37,7 @@
     "@angular/cli": "~16.2.1",
     "@angular/compiler-cli": "^16.2.0",
     "@ionic/angular-toolkit": "latest",
+    "@ngrx/schematics": "^16.2.0",
     "@types/jasmine": "~4.3.0",
     "jasmine-core": "~4.6.0",
     "karma": "~6.4.0",
