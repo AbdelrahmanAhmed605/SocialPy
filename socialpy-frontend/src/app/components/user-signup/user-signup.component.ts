@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { UserService } from '../api-services/user/user/user.service';
-import AuthService from '../../utilities/auth';
+import { UserService } from 'src/app/api-services/user/user.service';
+import { AuthService } from 'src/utilities/auth';
 
 @Component({
   selector: 'app-user-signup',
@@ -42,7 +42,8 @@ export class UserSignupComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private router: Router, // Router for navigating between pages
-    private userService: UserService // UserService for user-related API operations
+    private userService: UserService, // UserService for user-related API operations
+    private authService: AuthService
   ) {}
 
   ngOnInit() {
@@ -93,7 +94,7 @@ export class UserSignupComponent implements OnInit {
       this.userService.createUser(formData).subscribe(
         (response: any) => {
           // Place the new user's authentication token in the local storage
-          AuthService.login(response.token);
+          this.authService.login(response.token);
           this.router.navigate(['/']);
         },
         (error: any) => {

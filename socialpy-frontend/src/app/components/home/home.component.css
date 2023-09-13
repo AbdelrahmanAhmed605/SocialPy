@@ -1,3 +1,25 @@
+.loading-spinner {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+ion-spinner {
+  width: 50px;
+  height: 50px;
+}
+
+.error-message {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  font-size: 2rem;
+  color: red;
+}
+
 .feed-row {
   display: flex;
   flex-wrap: wrap;
@@ -21,6 +43,7 @@
   display: inline-flex;
   align-items: center;
   margin-right: 8px;
+  cursor: pointer;
 }
 
 .profile-circle img {
@@ -35,17 +58,18 @@
   height: 30px;
   text-align: center;
   line-height: 30px;
-  background-color: #cccccc;
+  background-color: rgb(204, 204, 204);
   color: white;
 }
 
 .username {
   display: inline-block;
   font-weight: bold;
-  margin-right: 8px;
+  cursor: pointer;
 }
 
 .small-icon {
+  margin-left: 8px;
   font-size: 3px;
 }
 
@@ -74,6 +98,10 @@
 .comment-button {
   cursor: pointer;
   padding: 0 var(--feed-content-spacing);
+}
+
+.liked-heart {
+  color: rgb(255, 48, 64);
 }
 
 ion-card-content {
