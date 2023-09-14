@@ -1,0 +1,70 @@
+<ion-app>
+    <ion-content overflow-scroll="true">
+        <ng-container *ngIf="loading">
+            <!-- Loading icon -->
+            <div class="loading-spinner">
+                <ion-spinner name="circular"></ion-spinner>
+            </div>
+        </ng-container>
+
+        <!-- Error message -->
+        <ng-container *ngIf="error">
+            <div class="error-message">
+                <p>{{ error }}</p>
+            </div>
+        </ng-container>
+
+        <ng-container *ngIf="!error && !loading">
+            <ion-grid>
+                <ion-row class="feed-row">
+                    <ion-col size-lg="6" offset-lg="3" size-md="8" offset-md="2" size-xs="12"
+                        *ngFor="let feedPost of userFeedPosts">
+                        <ion-card class="feed-card">
+                            <ion-card-header>
+                                <div class="profile-info">
+                                    <div class="profile-circle" (click)="goToUserProfilePage(feedPost.user.id)">
+                                        <ng-container *ngIf="feedPost.user.profile_picture">
+                                            <img [src]="feedPost.user.profile_picture" alt="Profile Picture" />
+                                        </ng-container>
+                                        <ng-container *ngIf="!feedPost.user.profile_picture">
+                                            <fa-icon [icon]="faUser"></fa-icon>
+                                        </ng-container>
+                                    </div>
+                                    <div class="username" (click)="goToUserProfilePage(feedPost.user.id)">
+                                        {{ feedPost.user.username }}
+                                    </div>
+                                    <fa-icon [icon]="faCircle" class="small-icon"></fa-icon>
+                                    <span class="post-date">{{ feedPost.formattedTimeAgo }}</span>
+                                </div>
+                            </ion-card-header>
+                            <div class="ion-text-center feed-image-container">
+                                <img [src]="feedPost.media" class="feed-image" alt="user feed image" />
+                            </div>
+                            <div class="post-interactions-buttons">
+                                <div class="like-button" (click)="toggleLike(feedPost.id)">
+                                    <fa-icon [icon]="isPostLiked(feedPost.id) ? faHeartSolid : faHeart" size="xl"
+                                        [ngClass]="{'liked-heart': isPostLiked(feedPost.id)}"></fa-icon>
+                                </div>
+                                <div class="comment-button">
+                                    <fa-icon [icon]="faComment" size="xl"></fa-icon>
+                                </div>
+                            </div>
+                            <ion-card-content>
+                                <div class="user-content">
+                                    <span class="username" (click)="goToUserProfilePage(feedPost.user.id)">{{
+                                        feedPost.user.username }}</span> {{ feedPost.content }}
+                                    <a class="hashtags" *ngFor="let hashtag of feedPost.hashtags">
+                                        #{{ hashtag.name}}
+                                    </a>
+                                </div>
+                            </ion-card-content>
+                            <div class="view-comments">
+                                View {{ feedPost.comment_count }} comments
+                            </div>
+                        </ion-card>
+                    </ion-col>
+                </ion-row>
+            </ion-grid>
+        </ng-container>
+    </ion-content>
+</ion-app>

@@ -1,0 +1,114 @@
+.loading-spinner {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+ion-spinner {
+  width: 50px;
+  height: 50px;
+}
+
+.error-message {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  font-size: 2rem;
+  color: red;
+}
+
+.feed-row {
+  display: flex;
+  flex-wrap: wrap;
+  --feed-content-spacing: 10px;
+}
+
+.feed-card {
+  height: auto;
+  display: flex;
+  margin: 2% 0;
+  flex-direction: column;
+}
+
+.profile-info {
+  padding: var(--feed-content-spacing);
+  display: flex;
+  align-items: center;
+}
+
+.profile-circle {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.profile-circle img {
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+}
+
+.profile-circle fa-icon {
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  text-align: center;
+  line-height: 30px;
+  background-color: rgb(204, 204, 204);
+  color: white;
+}
+
+.username {
+  display: inline-block;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.small-icon {
+  margin-left: 8px;
+  font-size: 3px;
+}
+
+.post-date {
+  margin-left: 4px;
+}
+
+.feed-image-container {
+  margin: 2% 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.feed-image {
+  width: 100%;
+  object-fit: cover;
+  max-height: 600px;
+}
+
+.post-interactions-buttons {
+  display: flex;
+  justify-content: left;
+}
+
+.like-button,
+.comment-button {
+  cursor: pointer;
+  padding: 0 var(--feed-content-spacing);
+}
+
+.liked-heart {
+  color: rgb(255, 48, 64);
+}
+
+ion-card-content {
+  padding: var(--feed-content-spacing);
+}
+
+.view-comments {
+  padding: var(--feed-content-spacing);
+  font-weight: bold;
+}
