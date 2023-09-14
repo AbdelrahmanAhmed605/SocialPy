@@ -1,0 +1,66 @@
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+
+import { Observable, throwError } from 'rxjs';
+import { switchMap, catchError } from 'rxjs/operators';
+
+import { API_BASE_URL } from '../api.config';
+import { AuthService } from 'src/utilities/auth';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class PostService {
+  constructor(private http: HttpClient, private authService: AuthService) { }
+  
+  // authService.handleAuthenticationToken is a utility function that returns the user token if found
+  // or an error that will be thrown into the service's catchError if not found
+
+  // Like a post by sending a POST request with authentication
+  likePost(postId: number): Observable<any> {
+    const likePostEndpoint = `post/${postId}/like/`;
+
+    return this.authService.handleAuthenticationToken().pipe(
+      switchMap((token) => {
+        // Set the headers with the Authorization token
+        const headers = new HttpHeaders({
+          Authorization: `Token ${token}`,
+        });
+
+        // Like the specified post
+        return this.http.post(`${API_BASE_URL}/${likePostEndpoint}`, null, {
+          headers,
+          withCredentials: true,
+        });
+      }),
+      catchError((error) => {
+        // throw the error
+        return throwError(() => error);
+      })
+    );
+  }
+
+  // Unlike a post by sending a POST request with authentication
+  unlikePost(postId: number): Observable<any> {
+    const unlikePostEndpoint = `post/${postId}/unlike/`;
+
+    return this.authService.handleAuthenticationToken().pipe(
+      switchMap((token) => {
+        // Set the headers with the Authorization token
+        const headers = new HttpHeaders({
+          Authorization: `Token ${token}`,
+        });
+
+        // Unlike the specified post
+        return this.http.post(`${API_BASE_URL}/${unlikePostEndpoint}`, null, {
+          headers,
+          withCredentials: true,
+        });
+      }),
+      catchError((error) => {
+        // throw the error
+        return throwError(() => error);
+      })
+    );
+  }
+}

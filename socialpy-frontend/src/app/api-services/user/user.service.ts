@@ -13,6 +13,9 @@ import { AuthService } from 'src/utilities/auth';
 export class UserService {
   constructor(private http: HttpClient, private authService: AuthService) {}
 
+  // authService.handleAuthenticationToken is a utility function that returns the user token if found
+  // or an error that will be thrown into the service's catchError if not found
+
   // API call to create a new user
   createUser(userData: any): Observable<any> {
     const createUserEndpoint = 'users';
@@ -32,8 +35,6 @@ export class UserService {
   }
 
   // Get the user's feed data while handling authentication
-  // If the handleAuthenticationToken utility functon return an error (user not authenticated) or an error occurs with
-  // the API call, then the catchError will run
   getUserFeed(): Observable<any> {
     const feedEndpoint = 'feed';
 
