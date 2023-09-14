@@ -161,19 +161,16 @@ class UserFeedView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        raise APIException(detail={"error": "An unexpected error occurred: " + str(e)},
-                           code=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        # try:
-        #     # Get posts created by users the requesting user follows
-        #     feed_posts = Post.objects.filter(
-        #         user__follower__follower_id=self.request.user.id,
-        #         user__follower__follow_status='accepted'
-        #     )
-        #     return feed_posts
-        # except Exception as e:
-        #     # Handle unexpected errors
-        #     raise APIException(detail={"error": "An unexpected error occurred: " + str(e)}, code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        try:
+            # Get posts created by users the requesting user follows
+            feed_posts = Post.objects.filter(
+                user__follower__follower_id=self.request.user.id,
+                user__follower__follow_status='accepted'
+            )
+            return feed_posts
+        except Exception as e:
+            # Handle unexpected errors
+            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)}, code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def list(self, request, *args, **kwargs):
         try:
