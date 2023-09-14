@@ -1,7 +1,7 @@
 from rest_framework import generics, status, serializers
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, APIException
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser
 
@@ -266,13 +266,24 @@ class SuggestHashtagsView(generics.ListAPIView):
             # Search for hashtag names that are similar to the provided search query
             suggested_hashtags = Hashtag.objects.filter(name__icontains=hashtag)
             return suggested_hashtags
-        except DatabaseError as e:
-            # Handle database-related errors
-            return Response({"error": f"Database error: {str(e)}"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
-            # Handle other unexpected errors
-            return Response({"error": "An unexpected error occurred: " + str(e)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # Handle unexpected errors
+            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)}, code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+        except APIException as e:
+            # Re-raise the APIException with the appropriate error message
+            raise e
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 # Endpoint: /api/hashtag/{hashtag_id}/posts/?page={}
@@ -284,15 +295,35 @@ class SearchHashtagPostsView(generics.ListAPIView):
 
     def get_queryset(self):
         hashtag_id = self.kwargs['hashtag_id']
+
         try:
             hashtag = Hashtag.objects.get(id=hashtag_id)
         except Hashtag.DoesNotExist:
-            return Response({"error": "Hashtag not found"}, status=status.HTTP_404_NOT_FOUND)
+            raise APIException(detail={"error": "Hashtag not found"}, code=status.HTTP_404_NOT_FOUND)
 
-        # Search for paginated posts with the specified hashtag and a public visibility
-        matched_posts = Post.objects.filter(hashtags=hashtag, visibility='public').only('id', 'media')
+        try:
+            # Search for paginated posts with the specified hashtag and a public visibility
+            matched_posts = Post.objects.filter(hashtags=hashtag, visibility='public').only('id', 'media')
+            return matched_posts
+        except Exception as e:
+            # Handle unexpected errors
+            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)}, code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return matched_posts
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+        except APIException as e:
+            # Re-raise the APIException with the appropriate error message
+            raise e
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 # Endpoint: /api/explore/posts/?page={}
 # API view to allow users view their explore page (posts created by public accounts the requesting user does not follow)
@@ -302,11 +333,31 @@ class ExplorePageView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # user__follower__follower=self.request.user excludes posts made by authors the requesting user is following
-        explore_posts = Post.objects.filter(visibility='public').exclude(
-            Q(user__follower__follower=self.request.user) | Q(user=self.request.user)
-        )
-        return explore_posts
+        try:
+            # user__follower__follower=self.request.user excludes posts made by authors the requesting user is following
+            explore_posts = Post.objects.filter(visibility='public').exclude(
+                Q(user__follower__follower=self.request.user) | Q(user=self.request.user)
+            )
+            return explore_posts
+        except Exception as e:
+            # Handle unexpected errors
+            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)}, code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+        except APIException as e:
+            # Re-raise the APIException with the appropriate error message
+            raise e
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 # Endpoint: /api/post/{post_id}/likers/?page={}
 # API view to get a list of all the users who liked a post
@@ -319,8 +370,23 @@ class PostLikersView(generics.ListAPIView):
         try:
             post = Post.objects.get(id=self.kwargs['post_id'])
         except Post.DoesNotExist:
-            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+            raise APIException(detail={"error": "Post not found"}, code=status.HTTP_404_NOT_FOUND)
 
         users = post.likes.only('id', 'username', 'profile_picture')
 
         return users
+
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+        except APIException as e:
+            # Re-raise the APIException with the appropriate error message
+            raise e
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
