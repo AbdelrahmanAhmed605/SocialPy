@@ -24,7 +24,8 @@ export class AuthService {
     return !!token;
   }
 
-  // Utility function to handle authentication token. This is to be used in API services that require authentication
+  // Utility function to handle authentication token. 
+  // This is to be used in API services that require authentication (we define it as Observable since Angular HTTPClient handles Observables )
   handleAuthenticationToken(): Observable<string> {
     const token = this.getToken();
 
