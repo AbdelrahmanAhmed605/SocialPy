@@ -13,9 +13,6 @@ import { AuthService } from 'src/utilities/auth';
 export class UserService {
   constructor(private http: HttpClient, private authService: AuthService) {}
 
-  // authService.handleAuthenticationToken is a utility function that returns the user token if found
-  // or an error that will be thrown into the service's catchError if not found
-
   // API call to create a new user
   createUser(userData: any): Observable<any> {
     const createUserEndpoint = 'users';
@@ -33,6 +30,14 @@ export class UserService {
       withCredentials: true,
     });
   }
+
+  /* 
+- authService.handleAuthenticationToken is a utility function that returns the user token if found
+ or an error that will be thrown into the service's catchError if not found
+ - .pipe is used to chain multiple operators together in a sequence (ex: switchMap and catchError)
+ - Use switchMap to transition from the handleAuthenticationToken's returned Observable string to the HTTP
+request's returned Observable structure. SwitchMap also preserves the token value returned from handleAuthenticationToken
+*/
 
   // Get the user's feed data while handling authentication
   getUserFeed(): Observable<any> {

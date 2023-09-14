@@ -11,10 +11,15 @@ import { AuthService } from 'src/utilities/auth';
   providedIn: 'root',
 })
 export class PostService {
-  constructor(private http: HttpClient, private authService: AuthService) { }
-  
-  // authService.handleAuthenticationToken is a utility function that returns the user token if found
-  // or an error that will be thrown into the service's catchError if not found
+  constructor(private http: HttpClient, private authService: AuthService) {}
+
+  /* 
+- authService.handleAuthenticationToken is a utility function that returns the user token if found
+ or an error that will be thrown into the service's catchError if not found
+ - .pipe is used to chain multiple operators together in a sequence (ex: switchMap and catchError)
+ - Use switchMap to transition from the handleAuthenticationToken's returned Observable string to the HTTP
+request's returned Observable structure. SwitchMap also preserves the token value returned from handleAuthenticationToken
+*/
 
   // Like a post by sending a POST request with authentication
   likePost(postId: number): Observable<any> {
