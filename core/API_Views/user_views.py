@@ -1,7 +1,7 @@
 from rest_framework import status, generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, APIException
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.parsers import MultiPartParser, JSONParser
@@ -161,18 +161,33 @@ class UserFeedView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        raise APIException(detail={"error": "An unexpected error occurred: " + str(e)},
+                           code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # try:
+        #     # Get posts created by users the requesting user follows
+        #     feed_posts = Post.objects.filter(
+        #         user__follower__follower_id=self.request.user.id,
+        #         user__follower__follow_status='accepted'
+        #     )
+        #     return feed_posts
+        # except Exception as e:
+        #     # Handle unexpected errors
+        #     raise APIException(detail={"error": "An unexpected error occurred: " + str(e)}, code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def list(self, request, *args, **kwargs):
         try:
-            # Get posts created by users the requesting user follows
-            feed_posts = Post.objects.filter(
-                user__follower__follower_id=self.request.user.id,
-                user__follower__follow_status='accepted'
-            )
-            return feed_posts
-        except DatabaseError as e:
-            return Response({"error": f"Database error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            queryset = self.get_queryset()
         except Exception as e:
-            return Response({"error": "An unexpected error occurred: " + str(e)},
-                            status = status.HTTP_500_INTERNAL_SERVER_ERROR)
+            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)}, code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 # Endpoint: /api/user/profile/{user_id}/?page={}
@@ -316,10 +331,21 @@ class SearchUsersView(generics.ListAPIView):
             # Search for users based on username
             queryset = User.objects.filter(username__icontains=username).only('username', 'profile_picture')
             return queryset
-        except DatabaseError as e:
-            # Handle database-related errors
-            return Response({"error": f"Database error: {str(e)}"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
-            # Handle other unexpected errors
-            return Response({"error": "An unexpected error occurred: " + str(e)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # Handle unexpected errors
+            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)}, code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+        except APIException as e:
+            # Re-raise the APIException with the appropriate error message
+            raise e
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
