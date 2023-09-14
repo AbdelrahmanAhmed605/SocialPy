@@ -1,7 +1,7 @@
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, APIException
 from rest_framework.response import Response
 
 # lets you directly manipulate database fields within database queries, leading to more efficient operations
@@ -133,8 +133,28 @@ class PostCommentListView(generics.ListAPIView):
         try:
             post = Post.objects.only('id').get(id=post_id)
         except Post.DoesNotExist:
-            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+            raise APIException(detail={"error": "Post not found"}, code=status.HTTP_404_NOT_FOUND)
 
-        # Access comments for the specified post using the related_name
-        comments = post.post_comments.all()
-        return comments
+        try:
+            # Access comments for the specified post using the related_name
+            comments = post.post_comments.all()
+            return comments
+        except Exception as e:
+            # Handle other unexpected errors
+            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)},
+                               code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+        except APIException as e:
+            # Re-raise the APIException with the appropriate error message
+            raise e
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)

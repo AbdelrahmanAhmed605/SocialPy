@@ -1,4 +1,5 @@
 from rest_framework import status
+from rest_framework.exceptions import APIException
 from rest_framework.response import Response
 
 # lets you directly manipulate database fields within database queries, leading to more efficient operations
@@ -34,10 +35,10 @@ def notify_user(notification_recipient, notification_sender, notification_type, 
             sender=notification_sender,
             notification_type=notification_type
         )
-    except (DatabaseError, IntegrityError):
-        return Response({"error": "Error creating notification"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except (DatabaseError, IntegrityError) as db_error:
+        raise APIException(f"Error creating notification: {db_error}")
     except Exception as e:
-        return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        raise APIException(f"An error occurred: {str(e)}")
 
     # Notify the recipient via WebSocket about the new notification
     try:
@@ -55,7 +56,7 @@ def notify_user(notification_recipient, notification_sender, notification_type, 
             }
         )
     except Exception as e:
-        return Response({"error": "Error sending WebSocket notification"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        raise APIException(f"Error sending WebSocket notification: {str(e)}")
 
 
 # Utility function to update follow counters

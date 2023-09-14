@@ -1,5 +1,6 @@
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import APIException
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -217,18 +218,31 @@ class FollowerListView(generics.ListAPIView):
         try:
             user = User.objects.only('id').get(id=user_id)
         except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            raise APIException(detail={"error": "User not found"}, code=status.HTTP_404_NOT_FOUND)
 
         try:
             # Get a queryset of the user's followers
             followers = User.objects.filter(following__following_id=user.id, following__follow_status='accepted')
             return followers
-        except DatabaseError:
-            return User.objects.none()
         except Exception as e:
             # Handle other unexpected errors
-            return Response({"error": "An unexpected error occurred: " + str(e)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)},
+                               code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+        except APIException as e:
+            # Re-raise the APIException with the appropriate error message
+            raise e
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 # Endpoint: /api/following_list/{user_id}/?page={}
@@ -243,15 +257,28 @@ class FollowingListView(generics.ListAPIView):
         try:
             user = User.objects.only('id').get(id=user_id)
         except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            raise APIException(detail={"error": "User not found"}, code=status.HTTP_404_NOT_FOUND)
 
         try:
             # Get a queryset of the users that the requesting user follows
             following_users = User.objects.filter(follower__follower_id=user.id, follower__follow_status='accepted')
             return following_users
-        except DatabaseError:
-            return User.objects.none()
         except Exception as e:
             # Handle other unexpected errors
-            return Response({"error": "An unexpected error occurred: " + str(e)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)},
+                               code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+        except APIException as e:
+            # Re-raise the APIException with the appropriate error message
+            raise e
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)

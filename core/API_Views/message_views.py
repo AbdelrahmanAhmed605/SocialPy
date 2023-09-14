@@ -1,5 +1,6 @@
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import APIException
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -130,7 +131,7 @@ class ConversationListView(generics.ListAPIView):
         try:
             user = User.objects.only('id').get(id=user_id)
         except User.DoesNotExist:
-            return Message.objects.none()
+            raise APIException(detail={"error": "User not found"}, code=status.HTTP_404_NOT_FOUND)
 
         try:
             # Fetch all messages between the requesting user and the receiver
@@ -143,8 +144,9 @@ class ConversationListView(generics.ListAPIView):
 
             return messages
         except Exception as e:
-            return Response({"error": "An unexpected error occurred: " + str(e)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # Handle unexpected errors
+            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)},
+                               code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get_most_recent_sender_status(self, queryset):
         # Get the most recent message in the conversation
@@ -162,8 +164,14 @@ class ConversationListView(generics.ListAPIView):
         return most_recent_sender_status
 
     def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+        except APIException as e:
+            # Re-raise the APIException with the appropriate error message
+            raise e
+
         # Get the messages between the 2 users
-        messages = self.get_queryset()
+        messages = queryset
         # Paginate the messages to only fetch paginated data from the database
         paginated_messages = self.paginate_queryset(messages)
 
@@ -189,24 +197,44 @@ class ConversationPartnerListView(generics.ListAPIView):
     def get_queryset(self):
         username = self.request.query_params.get('username')  # Get the username from the search query if applied
 
-        # Get all users that sent a message to the requesting user or received a message from the requesting user
-        # last_interaction annotated field used to order the Users by their most recent interaction with the requesting user
-        conversation_partners = User.objects.only('id', 'username', 'profile_picture').filter(
-            Q(received_messages__sender_id=self.request.user.id) | Q(sent_messages__receiver_id=self.request.user.id)
-        ).annotate(
-            last_received=Max('received_messages__created_at'),
-            last_sent=Max('sent_messages__created_at')
-        ).annotate(
-            last_interaction=Case(
-                When(last_received__gt=F('last_sent'), then=F('last_received')),
-                default=F('last_sent'),
-                output_field=DateTimeField()
-            )
-        ).distinct().exclude(id=self.request.user.id).order_by('-last_interaction')
+        try:
+            # Get all users that sent a message to the requesting user or received a message from the requesting user
+            # last_interaction annotated field used to order the Users by their most recent interaction with the requesting user
+            conversation_partners = User.objects.only('id', 'username', 'profile_picture').filter(
+                Q(received_messages__sender_id=self.request.user.id) | Q(sent_messages__receiver_id=self.request.user.id)
+            ).annotate(
+                last_received=Max('received_messages__created_at'),
+                last_sent=Max('sent_messages__created_at')
+            ).annotate(
+                last_interaction=Case(
+                    When(last_received__gt=F('last_sent'), then=F('last_received')),
+                    default=F('last_sent'),
+                    output_field=DateTimeField()
+                )
+            ).distinct().exclude(id=self.request.user.id).order_by('-last_interaction')
 
-        # Check if a search query was applied to view for specific users from the result query
-        if username:
-            # Filter conversation partners by username query
-            conversation_partners = conversation_partners.filter(username__icontains=username)
+            # Check if a search query was applied to view for specific users from the result query
+            if username:
+                # Filter conversation partners by username query
+                conversation_partners = conversation_partners.filter(username__icontains=username)
 
-        return conversation_partners
+            return conversation_partners
+        except Exception as e:
+            # Handle unexpected errors
+            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)},
+                               code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+        except APIException as e:
+            # Re-raise the APIException with the appropriate error message
+            raise e
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
