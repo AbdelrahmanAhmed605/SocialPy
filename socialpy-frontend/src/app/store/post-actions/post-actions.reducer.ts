@@ -1,5 +1,5 @@
 import { createReducer, on } from '@ngrx/store';
-import { likePostSuccess, unlikePost } from './post-actions.actions';
+import { likePostSuccess, unlikePostSuccess } from './post-actions.actions';
 
 // Define the shape of the LikedPostsState
 export interface LikedPostsState {
@@ -19,8 +19,8 @@ export const postActionsReducer = createReducer(
     likedPostIds: [...state.likedPostIds, postId], // Add the new postId to the likedPostIds state property
   })),
 
-  // Listen to the 'unlikePost' action and update the state accordingly.
-  on(unlikePost, (state, { postId }) => ({
+  // Listen to the 'unlikePostSuccess' action and update the state accordingly.
+  on(unlikePostSuccess, (state, { postId }) => ({
     ...state,
     likedPostIds: state.likedPostIds.filter((id) => id !== postId), // Remove the postId from the likedPostIds state property
   }))

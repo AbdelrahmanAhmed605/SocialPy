@@ -17,3 +17,9 @@ export const unlikePost = createAction(
   '[Post Actions] Unlike Post',
   props<{ postId: number }>()
 );
+
+// Action to indicate that the "unlike" operation on a post was successful.
+export const unlikePostSuccess = createAction(
+  '[Post Actions] Unlike Post Success',
+  props<{ postId: number }>()
+);
