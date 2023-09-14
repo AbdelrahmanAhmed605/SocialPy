@@ -7,6 +7,7 @@ import { HttpClientModule } from '@angular/common/http';
 import { AppRoutingModule } from './app-routing.module';
 
 import { StoreModule } from '@ngrx/store';
+import { EffectsModule } from '@ngrx/effects';
 import { reducers } from './store/app.state'; 
 
 import { BrowserModule } from '@angular/platform-browser';
@@ -23,6 +24,9 @@ import { HomeComponent } from './components/home/home.component';
 import { UserSignupComponent } from './components/user-signup/user-signup.component';
 import { UserLoginComponent } from './components/user-login/user-login.component';
 import { UserProfileComponent } from './components/user-profile/user-profile.component';
+
+import { UserFeedEffects } from './store/user-feed/user-feed.effects';
+import { PostActionsEffects } from './store/post-actions/post-actions.effects';
 
 @NgModule({
   declarations: [
@@ -45,8 +49,9 @@ import { UserProfileComponent } from './components/user-profile/user-profile.com
     FormsModule,
     ReactiveFormsModule,
     StoreModule.forRoot(reducers),
+    EffectsModule.forRoot([UserFeedEffects, PostActionsEffects]),
   ],
-  providers: [AuthService,UserService, PostService],
+  providers: [AuthService, UserService, PostService],
   bootstrap: [AppComponent],
 })
 export class AppModule {}
