@@ -67,13 +67,7 @@ export class UserFeedEffects {
             ];
           }),
           catchError((error) => {
-            if (this.authService.isAuthenticationError(error)) {
-              // Redirect to the /login route for authentication errors
-              this.router.navigate(['/login']);
-            } else {
-              // Log other errors
-              console.error(error);
-            }
+            console.error(error);
             // Return an observable to continue error propagation
             return of(UserFeedActions.loadUserFeedFailure({ error }));
           })
