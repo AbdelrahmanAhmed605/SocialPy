@@ -22,15 +22,13 @@ class NotificationListView(generics.ListAPIView):
             return notifications
         except Exception as e:
             # Handle unexpected errors
-            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)},
-                               code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            raise APIException()
 
     def list(self, request, *args, **kwargs):
         try:
             queryset = self.get_queryset()
         except APIException as e:
-            # Re-raise the APIException with the appropriate error message
-            raise e
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         page = self.paginate_queryset(queryset)
         if page is not None:
