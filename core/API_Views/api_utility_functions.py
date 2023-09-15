@@ -4,7 +4,6 @@ from rest_framework.response import Response
 
 # lets you directly manipulate database fields within database queries, leading to more efficient operations
 from django.db.models import F
-from django.db import DatabaseError, IntegrityError
 
 # Accessing Django Channels' channel layer for WebSocket integration
 from channels.layers import get_channel_layer
@@ -35,10 +34,8 @@ def notify_user(notification_recipient, notification_sender, notification_type, 
             sender=notification_sender,
             notification_type=notification_type
         )
-    except (DatabaseError, IntegrityError) as db_error:
-        raise APIException(f"Error creating notification: {db_error}")
     except Exception as e:
-        raise APIException(f"An error occurred: {str(e)}")
+        raise APIException()
 
     # Notify the recipient via WebSocket about the new notification
     try:
@@ -56,7 +53,7 @@ def notify_user(notification_recipient, notification_sender, notification_type, 
             }
         )
     except Exception as e:
-        raise APIException(f"Error sending WebSocket notification: {str(e)}")
+        raise APIException()
 
 
 # Utility function to update follow counters

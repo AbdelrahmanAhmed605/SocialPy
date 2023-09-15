@@ -1,6 +1,6 @@
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, NotFound
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -218,7 +218,7 @@ class FollowerListView(generics.ListAPIView):
         try:
             user = User.objects.only('id').get(id=user_id)
         except User.DoesNotExist:
-            raise APIException(detail={"error": "User not found"}, code=status.HTTP_404_NOT_FOUND)
+            raise NotFound("User not found")
 
         try:
             # Get a queryset of the user's followers
@@ -226,15 +226,15 @@ class FollowerListView(generics.ListAPIView):
             return followers
         except Exception as e:
             # Handle other unexpected errors
-            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)},
-                               code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            raise APIException()
 
     def list(self, request, *args, **kwargs):
         try:
             queryset = self.get_queryset()
+        except NotFound as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
         except APIException as e:
-            # Re-raise the APIException with the appropriate error message
-            raise e
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -257,7 +257,7 @@ class FollowingListView(generics.ListAPIView):
         try:
             user = User.objects.only('id').get(id=user_id)
         except User.DoesNotExist:
-            raise APIException(detail={"error": "User not found"}, code=status.HTTP_404_NOT_FOUND)
+            raise NotFound("User not found")
 
         try:
             # Get a queryset of the users that the requesting user follows
@@ -265,15 +265,15 @@ class FollowingListView(generics.ListAPIView):
             return following_users
         except Exception as e:
             # Handle other unexpected errors
-            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)},
-                               code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            raise APIException()
 
     def list(self, request, *args, **kwargs):
         try:
             queryset = self.get_queryset()
+        except NotFound as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
         except APIException as e:
-            # Re-raise the APIException with the appropriate error message
-            raise e
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         page = self.paginate_queryset(queryset)
         if page is not None:
