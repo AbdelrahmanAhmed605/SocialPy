@@ -27,8 +27,8 @@ import { UserProfileComponent } from './components/user-profile/user-profile.com
 
 import { UserFeedEffects } from './store/user-feed/user-feed.effects';
 import { PostActionsEffects } from './store/post-actions/post-actions.effects';
-import { ErrorPageComponent } from './error-page/error-page.component';
-import { LoadingPageComponent } from './loading-page/loading-page.component';
+import { ErrorPageComponent } from './components/error-page/error-page.component';
+import { LoadingPageComponent } from './components/loading-page/loading-page.component';
 
 @NgModule({
   declarations: [
