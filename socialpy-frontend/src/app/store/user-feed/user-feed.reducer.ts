@@ -31,7 +31,14 @@ export const userFeedReducer = createReducer(
   on(UserFeedActions.loadUserFeedSuccess, (state, { postData }) => ({
     ...state,
     loading: false, // Set loading to false when data is successfully loaded
-    postData, // Update the postData with the loaded data
+    postData: [
+      // Update the postData with unique posts from the loaded data
+      ...state.postData,
+      ...postData.filter(
+        (newPost) =>
+          !state.postData.some((existingPost) => existingPost.id === newPost.id)
+      ),
+    ],
   })),
 
   // Action handler for 'loadUserFeedFailure' action

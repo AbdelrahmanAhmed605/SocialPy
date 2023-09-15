@@ -75,6 +75,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         .pipe(takeUntil(this.destroyed$))
         .subscribe((error) => {
           this.error = error;
+          console.log(this.error);
         })
     );
 

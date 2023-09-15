@@ -1,17 +1,12 @@
 <ion-app>
     <ion-content overflow-scroll="true">
         <ng-container *ngIf="loading">
-            <!-- Loading icon -->
-            <div class="loading-spinner">
-                <ion-spinner name="circular"></ion-spinner>
-            </div>
+            <app-loading-page></app-loading-page>
         </ng-container>
 
         <!-- Error message -->
         <ng-container *ngIf="error">
-            <div class="error-message">
-                <p>{{ error }}</p>
-            </div>
+            <app-error-page [error]="error"></app-error-page>
         </ng-container>
 
         <ng-container *ngIf="!error && !loading">

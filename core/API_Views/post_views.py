@@ -1,7 +1,7 @@
 from rest_framework import generics, status, serializers
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import PermissionDenied, APIException
+from rest_framework.exceptions import PermissionDenied, APIException, NotFound
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser
 
@@ -267,15 +267,13 @@ class SuggestHashtagsView(generics.ListAPIView):
             suggested_hashtags = Hashtag.objects.filter(name__icontains=hashtag)
             return suggested_hashtags
         except Exception as e:
-            # Handle unexpected errors
-            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)}, code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            raise APIException()
 
     def list(self, request, *args, **kwargs):
         try:
             queryset = self.get_queryset()
         except APIException as e:
-            # Re-raise the APIException with the appropriate error message
-            raise e
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -299,7 +297,7 @@ class SearchHashtagPostsView(generics.ListAPIView):
         try:
             hashtag = Hashtag.objects.get(id=hashtag_id)
         except Hashtag.DoesNotExist:
-            raise APIException(detail={"error": "Hashtag not found"}, code=status.HTTP_404_NOT_FOUND)
+            raise NotFound("Hashtag not found")
 
         try:
             # Search for paginated posts with the specified hashtag and a public visibility
@@ -307,14 +305,15 @@ class SearchHashtagPostsView(generics.ListAPIView):
             return matched_posts
         except Exception as e:
             # Handle unexpected errors
-            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)}, code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            raise APIException()
 
     def list(self, request, *args, **kwargs):
         try:
             queryset = self.get_queryset()
+        except NotFound as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
         except APIException as e:
-            # Re-raise the APIException with the appropriate error message
-            raise e
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -341,14 +340,13 @@ class ExplorePageView(generics.ListAPIView):
             return explore_posts
         except Exception as e:
             # Handle unexpected errors
-            raise APIException(detail={"error": "An unexpected error occurred: " + str(e)}, code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            raise APIException()
 
     def list(self, request, *args, **kwargs):
         try:
             queryset = self.get_queryset()
         except APIException as e:
-            # Re-raise the APIException with the appropriate error message
-            raise e
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -370,18 +368,21 @@ class PostLikersView(generics.ListAPIView):
         try:
             post = Post.objects.get(id=self.kwargs['post_id'])
         except Post.DoesNotExist:
-            raise APIException(detail={"error": "Post not found"}, code=status.HTTP_404_NOT_FOUND)
+            raise NotFound("Post not found")
 
-        users = post.likes.only('id', 'username', 'profile_picture')
-
-        return users
+        try:
+            users = post.likes.only('id', 'username', 'profile_picture')
+            return users
+        except Exception as e:
+            raise APIException()
 
     def list(self, request, *args, **kwargs):
         try:
             queryset = self.get_queryset()
+        except NotFound as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
         except APIException as e:
-            # Re-raise the APIException with the appropriate error message
-            raise e
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         page = self.paginate_queryset(queryset)
         if page is not None:

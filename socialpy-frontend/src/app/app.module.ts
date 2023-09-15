@@ -20,11 +20,6 @@ import { UserService } from './api-services/user/user.service';
 import { PostService } from './api-services/post/post.service';
 
 import { AppComponent } from './app.component';
-<<<<<<< Updated upstream
-import { HomeComponent } from './home/home.component';
-import { UserSignupComponent } from './user-signup/user-signup.component';
-import { UserLoginComponent } from './user-login/user-login.component';
-=======
 import { HomeComponent } from './components/home/home.component';
 import { UserSignupComponent } from './components/user-signup/user-signup.component';
 import { UserLoginComponent } from './components/user-login/user-login.component';
@@ -34,7 +29,6 @@ import { UserFeedEffects } from './store/user-feed/user-feed.effects';
 import { PostActionsEffects } from './store/post-actions/post-actions.effects';
 import { ErrorPageComponent } from './error-page/error-page.component';
 import { LoadingPageComponent } from './loading-page/loading-page.component';
->>>>>>> Stashed changes
 
 @NgModule({
   declarations: [
@@ -42,12 +36,9 @@ import { LoadingPageComponent } from './loading-page/loading-page.component';
     HomeComponent,
     UserSignupComponent,
     UserLoginComponent,
-<<<<<<< Updated upstream
-=======
     UserProfileComponent,
     ErrorPageComponent,
     LoadingPageComponent,
->>>>>>> Stashed changes
   ],
   imports: [
     HttpClientModule,
