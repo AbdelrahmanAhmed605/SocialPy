@@ -1,13 +1,22 @@
 import { Injectable } from '@angular/core';
+
 import { Actions, createEffect, ofType } from '@ngrx/effects';
+
+import { of, EMPTY } from 'rxjs';
 import { catchError, mergeMap, map } from 'rxjs/operators';
+
 import { PostService } from 'src/app/api-services/post/post.service';
 import * as PostActions from 'src/app/store/post-actions/post-actions.actions';
-import { EMPTY } from 'rxjs';
+
+import { AuthService } from 'src/utilities/auth';
 
 @Injectable()
 export class PostActionsEffects {
-  constructor(private actions$: Actions, private postService: PostService) {}
+  constructor(
+    private actions$: Actions,
+    private postService: PostService,
+    private authService: AuthService
+  ) {}
 
   // Effect middleware function to like a post when the 'likePost' action is called
   // The function calls the api to like the post and updates the selectLikedPostIds central selector state
@@ -23,9 +32,15 @@ export class PostActionsEffects {
           // since mergeMap can allow multiple separate posts to be liked, we use map to handle each separate post
           map(() => PostActions.likePostSuccess({ postId: action.postId })), // Dispatch the action to add the post to the state variable
           catchError((error) => {
-            // If an error occurs, print it in the browser console
+            // Log error
             console.error(error);
-            return EMPTY;
+            // If error was due to authentication, call the likePostFailure action. 
+            // This will be used in the component to alert the user to log in
+            if (this.authService.isAuthenticationError(error)) {
+              return of(PostActions.likePostFailure({ error }));
+            } else {
+              return EMPTY;
+            }
           })
         )
       )
@@ -43,9 +58,15 @@ export class PostActionsEffects {
           // Dispatch the unlikePostSuccess action to remove the post from the state variable
           map(() => PostActions.unlikePostSuccess({ postId: action.postId })),
           catchError((error) => {
-            // If an error occurs, print it in the browser console
+            // Log error
             console.error(error);
-            return EMPTY;
+            // If error was due to authentication, call the unlikePostFailure action.
+            // This will be used in the component to alert the user to log in
+            if (this.authService.isAuthenticationError(error)) {
+              return of(PostActions.unlikePostFailure({ error }));
+            } else {
+              return EMPTY;
+            }
           })
         )
       )

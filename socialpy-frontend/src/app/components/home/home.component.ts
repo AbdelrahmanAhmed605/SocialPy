@@ -11,7 +11,10 @@ import {
   selectUserFeedLoading,
   selectUserFeedError,
 } from 'src/app/store/selectors/user-feed.selector';
-import { selectLikedPostIds } from 'src/app/store/selectors/post-actions.selector';
+import {
+  selectLikedPostIds,
+  selectPostActionError,
+} from 'src/app/store/selectors/post-actions.selector';
 
 import {
   likePost,
@@ -43,8 +46,20 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   userFeedPosts: any[] = []; // Contains the feed post data
   likedPostIds: number[] = []; // Contains the IDs of posts that were liked by the user
-  loading: boolean = false; // Tracks the loading status of feed posts being fetched
-  error: any = null; // Tracks if any errors occur while fetching feed posts
+  userFeedLoading: boolean = false; // Tracks the loading status of feed posts being fetched
+  userFeedError: any = null; // Tracks if any errors occur while fetching feed posts
+  postActionsError: any = null; // Tracks if any errors occur while liking/unliking a post
+  isAlertOpen: boolean = false; // Tracks the status of the alert element
+
+  // Alert button displays a log in button to return the user to the log in page
+  alertButtons = [
+    {
+      text: 'Log In',
+      handler: () => {
+        this.goToLoginPage();
+      },
+    },
+  ];
 
   private destroyed$: Subject<void> = new Subject<void>();
   private subscriptions: Subscription[] = [];
@@ -64,7 +79,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         .select(selectUserFeedLoading)
         .pipe(takeUntil(this.destroyed$))
         .subscribe((loading) => {
-          this.loading = loading;
+          this.userFeedLoading = loading;
         })
     );
 
@@ -74,8 +89,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         .select(selectUserFeedError)
         .pipe(takeUntil(this.destroyed$))
         .subscribe((error) => {
-          this.error = error;
-          console.log(this.error);
+          this.userFeedError = error;
         })
     );
 
@@ -91,7 +105,6 @@ export class HomeComponent implements OnInit, OnDestroy {
 
             formattedTimeAgo: timeAgoFromString(post.created_at),
           }));
-          console.log('Updated userFeedPosts:', this.userFeedPosts);
         })
     );
 
@@ -104,6 +117,20 @@ export class HomeComponent implements OnInit, OnDestroy {
           this.likedPostIds = likedIds;
         })
     );
+
+    // Subscribe to listen to any changes in the LikedPostStates's error property
+    this.subscriptions.push(
+      this.store
+        .select(selectPostActionError)
+        .pipe(takeUntil(this.destroyed$))
+        .subscribe((error) => {
+          this.postActionsError = error;
+        })
+    );
+  }
+
+  setOpen(isOpen: boolean) {
+    this.isAlertOpen = isOpen;
   }
 
   // Check if a post is liked by the user
@@ -123,11 +150,18 @@ export class HomeComponent implements OnInit, OnDestroy {
       // Like the post
       this.store.dispatch(likePost({ postId }));
     }
+
+    // Set isAlertOpen to true when an error occurs
+    this.isAlertOpen = !!this.postActionsError;
   }
 
   // Redirect the user to the profile page associated with the user they are attempting to view
   goToUserProfilePage(userId: string) {
     this.router.navigate(['/profile', userId]);
+  }
+
+  goToLoginPage() {
+    this.router.navigate(['/login']);
   }
 
   ngOnDestroy(): void {

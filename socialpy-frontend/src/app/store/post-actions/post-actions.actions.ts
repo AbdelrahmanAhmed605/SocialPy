@@ -12,6 +12,12 @@ export const likePostSuccess = createAction(
   props<{ postId: number }>()
 );
 
+// Action to indicate that the "like" operation on a post was not successful.
+export const likePostFailure = createAction(
+  '[Post Actions] Like Post Success Failure',
+  props<{ error: any }>()
+);
+
 // Create an action to "unlike" a post with a specific postId.
 export const unlikePost = createAction(
   '[Post Actions] Unlike Post',
@@ -22,4 +28,10 @@ export const unlikePost = createAction(
 export const unlikePostSuccess = createAction(
   '[Post Actions] Unlike Post Success',
   props<{ postId: number }>()
+);
+
+// Action to indicate that the "unlike" operation on a post was not successful.
+export const unlikePostFailure = createAction(
+  '[Post Actions] Unlike Post Success Failure',
+  props<{ error: any }>()
 );

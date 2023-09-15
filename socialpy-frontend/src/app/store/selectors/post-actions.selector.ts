@@ -17,3 +17,12 @@ export const selectLikedPostIds = createSelector(
   selectLikedPostsFeature,  // Use the feature selector to access the 'likedPosts' feature state
   (state: LikedPostsState) => state.likedPostIds  // Select the 'likedPostIds' property from the state
 );
+
+/* 
+Selector function to select the 'error' property from the LikedPostsState. This allows components and 
+effect middlewares to efficiently access error information if any errors occur during liking/unliking
+*/
+export const selectPostActionError = createSelector(
+  selectLikedPostsFeature,
+  (state: LikedPostsState) => state.error // Select the 'error' property from the state
+);

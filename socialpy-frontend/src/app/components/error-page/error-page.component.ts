@@ -14,7 +14,6 @@ export class ErrorPageComponent implements OnInit {
   ngOnInit(): void {
     if (this.error) {
       console.error(this.error);
-      console.error(this.error.status);
     }
   }
 

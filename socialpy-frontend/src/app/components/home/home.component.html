@@ -1,15 +1,21 @@
 <ion-app>
     <ion-content overflow-scroll="true">
-        <ng-container *ngIf="loading">
+        <!-- Display Loading page while waiting to retrieve user feed data -->
+        <ng-container *ngIf="userFeedLoading">
             <app-loading-page></app-loading-page>
         </ng-container>
 
-        <!-- Error message -->
-        <ng-container *ngIf="error">
-            <app-error-page [error]="error"></app-error-page>
+        <!-- Error during retrieval of user feed data -->
+        <ng-container *ngIf="userFeedError">
+            <app-error-page [error]="userFeedError"></app-error-page>
         </ng-container>
 
-        <ng-container *ngIf="!error && !loading">
+        <ion-alert [isOpen]="isAlertOpen" header="Login Required"
+            message="Looks like you've been logged out, let's get you back in!" [buttons]="alertButtons"
+            (didDismiss)="setOpen(false)"></ion-alert>
+
+
+        <ng-container *ngIf=" !userFeedError && !userFeedLoading">
             <ion-grid>
                 <ion-row class="feed-row">
                     <ion-col size-lg="6" offset-lg="3" size-md="8" offset-md="2" size-xs="12"
