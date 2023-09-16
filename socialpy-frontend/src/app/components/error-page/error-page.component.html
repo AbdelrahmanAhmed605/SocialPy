@@ -1,0 +1,13 @@
+<ng-container *ngIf="error">
+    <div [ngClass]="'status-' + error.status" class="error-container">
+        <div class="status-content">
+            <p class="status-message">{{ getErrorMessage(error.status) }}</p>
+            <ion-button class="redirect-button" (click)="redirectButton(error.status)">
+                {{ error.status === 401 ? 'Log In' : 'Back to Homepage'}}
+            </ion-button>
+        </div>
+        <div class="error-image">
+            <img [src]="getErrorImage(error.status)">
+        </div>
+    </div>
+</ng-container>
