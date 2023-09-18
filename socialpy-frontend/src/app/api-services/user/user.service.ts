@@ -40,8 +40,8 @@ request's returned Observable structure. SwitchMap also preserves the token valu
 */
 
   // Get the user's feed data while handling authentication
-  getUserFeed(): Observable<any> {
-    const feedEndpoint = 'feed';
+  getUserFeed(page: number): Observable<any> {
+    const feedEndpoint = `feed/?page=${page}`;
 
     return this.authService.handleAuthenticationToken().pipe(
       switchMap((token) => {
