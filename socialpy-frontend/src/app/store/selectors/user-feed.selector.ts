@@ -10,33 +10,32 @@ const selectUserFeedFeature = createFeatureSelector<UserFeedState>('userFeed');
 // Selectors are used to make a central mechanism to allow different components and effect middlewares to 
 // efficiently access and change data from the store's state.
 
-// Create a selector function to select the entire UserFeedState including properties like 'loading', 'error', and 'postData'.
+// Create a selector function to select the entire UserFeedState
 export const selectUserFeedState = createSelector(
   selectUserFeedFeature,
   (state: UserFeedState) => state
 );
 
-/* 
-Selector function to select the 'postData' property from the 'userFeed' feature state. This allows components 
-and effect middlewares to efficiently access the user feed data.
-*/
+// Selector for the 'postData' property from the 'userFeed' feature state to allow efficient access to user feed data.
 export const selectUserFeedData = createSelector(
   selectUserFeedState, // Use the selectUserFeedState selector
   (state: UserFeedState) => state.postData
 );
 
-/* 
-Selector function to select the 'loading' property from the 'userFeed' feature state. This enables components and 
-effect middlewares to efficiently access the loading state, which indicates if data is being fetched.
-*/
+// Selector for the 'hasMoreData' to allow components to detect if there is more paginated data
+export const selectUserFeedHasMoreData = createSelector(
+  selectUserFeedState, // Use the selectUserFeedState selector
+  (state: UserFeedState) => state.hasMoreData
+);
+
+// Selector for 'loading' property to indicate if data is currently being fetched.
 export const selectUserFeedLoading = createSelector(
   selectUserFeedState, // Use the selectUserFeedState selector
   (state: UserFeedState) => state.loading
 );
 
 /* 
-Selector function to select the 'error' property from the 'userFeed' feature state. This allows components and 
-effect middlewares to efficiently access error information if any errors occur during data retrieval.
+Selector for 'error' property to indicate if any errors occur during data retrieval.
 */
 export const selectUserFeedError = createSelector(
   selectUserFeedState, // Use the selectUserFeedState selector
