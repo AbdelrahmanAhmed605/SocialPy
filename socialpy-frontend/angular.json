@@ -28,6 +28,7 @@
               }
             ],
             "styles": [
+              "src/theme/variables.css",
               "src/styles.css",
               {
                 "input": "node_modules/@ionic/angular/css/core.css"
@@ -127,9 +128,7 @@
                 "output": "./svg"
               }
             ],
-            "styles": [
-              "src/styles.css"
-            ],
+            "styles": ["src/theme/variables.css", "src/styles.css"],
             "scripts": []
           }
         },
