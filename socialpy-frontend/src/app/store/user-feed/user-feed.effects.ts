@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { Router } from '@angular/router';
 
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { select, Store } from '@ngrx/store';
@@ -13,7 +12,6 @@ import {
 import { of } from 'rxjs';
 
 import { UserService } from 'src/app/api-services/user/user.service';
-import { AuthService } from 'src/utilities/auth';
 
 import * as UserFeedActions from 'src/app/store/user-feed/user-feed.actions';
 import * as PostActions from 'src/app/store/post-actions/post-actions.actions';
@@ -27,9 +25,7 @@ export class UserFeedEffects {
   constructor(
     private actions$: Actions,
     private userService: UserService,
-    private store: Store<AppState>,
-    private router: Router,
-    private authService: AuthService
+    private store: Store<AppState>
   ) {}
 
   // Effect middleware function to load the user's feed when the 'loadUserFeed' action is called
@@ -38,20 +34,21 @@ export class UserFeedEffects {
   loadUserFeed$ = createEffect(() =>
     this.actions$.pipe(
       ofType(UserFeedActions.loadUserFeed), // Listen for the 'loadUserFeed' action
-      switchMap(() =>
+      switchMap((action) =>
         // Fetch the user's feed from the userService API
-        this.userService.getUserFeed().pipe(
+        this.userService.getUserFeed(action.page).pipe(
           // Combine the result of the API call with selectLikedPostIds selector obtained from the store
           withLatestFrom(this.store.pipe(select(selectLikedPostIds))),
           // Process the API response and liked post IDs
           mergeMap(([apiResponse, likedPostIds]) => {
             const results = apiResponse.results as Post[];
+            const nextResultExists = apiResponse.next; // Boolean that determines if there is more paginated data 
 
             /*
-            - The filter accesses the returned feed results from the API call and looks for posts that have already 
-            been liked by the user AND are not present in the centrally shared state 'likedPostIds' (to prevent duplication)
-            - The map generates a likePostSuccess action for each post that is already liked and not in the central state.
-            The likePostSuccess action will call the reducer to add these posts to the centrally shared state 'likedPostIds'
+            - The filter accesses the returned API feed results and looks for posts that have already been liked by 
+            the user AND are not present in the centrally shared state 'likedPostIds' (to prevent duplication)
+            - The map generates a likePostSuccess action to add each post that is already liked and not in 
+            'likedPostIds'.
             */
             const likedPostsToLike = results
               .filter(
@@ -59,10 +56,13 @@ export class UserFeedEffects {
               )
               .map((post) => PostActions.likePostSuccess({ postId: post.id }));
 
-            // Effects expect returned actions. The 'loadUserFeedSuccess' action updates the yserFeedState with fetched
+            // Effects expect returned actions. The 'loadUserFeedSuccess' action updates the userFeedState with fetched
             // API returned data and 'likedPostsToLike' updates the central state with the unique already liked posts
             return [
-              UserFeedActions.loadUserFeedSuccess({ postData: results }),
+              UserFeedActions.loadUserFeedSuccess({
+                postData: results,
+                hasMoreData: nextResultExists,
+              }),
               ...likedPostsToLike,
             ];
           }),

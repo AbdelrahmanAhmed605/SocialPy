@@ -1,13 +1,15 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
-import { Store } from '@ngrx/store';
+import { InfiniteScrollCustomEvent } from '@ionic/angular';
 
 import { Subscription, Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
+import { Store } from '@ngrx/store';
 import { AppState } from 'src/app/store/app.state';
 import {
   selectUserFeedData,
+  selectUserFeedHasMoreData,
   selectUserFeedLoading,
   selectUserFeedError,
 } from 'src/app/store/selectors/user-feed.selector';
@@ -44,13 +46,20 @@ export class HomeComponent implements OnInit, OnDestroy {
   faHeartSolid = faHeartSolid;
   faComment = faComment;
 
-  userFeedPosts: any[] = []; // Contains the feed post data
-  likedPostIds: number[] = []; // Contains the IDs of posts that were liked by the user
-  userFeedLoading: boolean = false; // Tracks the loading status of feed posts being fetched
-  userFeedError: any = null; // Tracks if any errors occur while fetching feed posts
-  postActionsError: any = null; // Tracks if any errors occur while liking/unliking a post
-  isAlertOpen: boolean = false; // Tracks the status of the alert element
+  initialLoadComplete = false; // Tracks the loading status for the initial loading of the page
 
+  currentUserFeedPage = 1; // keep track of the current page of user feed content (for pagination)
+  hasMoreUserFeedData: boolean = false; // Keeps track if there is more paginated data
+
+  userFeedError: any = null; // Tracks if any errors occur while fetching feed posts
+  userFeedPosts: any[] = []; // Contains the feed post data
+  // Define a Set to keep track of IDs of unique post in the feed so repeated posts are not added when applying pagination
+  private uniquePostIds = new Set<number>();
+
+  likedPostIds: number[] = []; // Contains the IDs of posts that were liked by the user
+  postActionsError: any = null; // Tracks if any errors occur while liking/unliking a post
+
+  isAlertOpen: boolean = false; // Tracks the status of the alert element
   // Alert button displays a log in button to return the user to the log in page
   alertButtons = [
     {
@@ -71,7 +80,9 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     // Dispatch the action to load user feed
-    this.store.dispatch(UserFeedActions.loadUserFeed());
+    this.store.dispatch(
+      UserFeedActions.loadUserFeed({ page: this.currentUserFeedPage })
+    );
 
     // Subscribe to listen to any changes in the UserFeedState's loading property
     this.subscriptions.push(
@@ -79,7 +90,9 @@ export class HomeComponent implements OnInit, OnDestroy {
         .select(selectUserFeedLoading)
         .pipe(takeUntil(this.destroyed$))
         .subscribe((loading) => {
-          this.userFeedLoading = loading;
+          if (!loading) {
+            this.initialLoadComplete = true;
+          }
         })
     );
 
@@ -99,12 +112,34 @@ export class HomeComponent implements OnInit, OnDestroy {
         .select(selectUserFeedData)
         .pipe(takeUntil(this.destroyed$))
         .subscribe((postData) => {
-          this.userFeedPosts = postData.map((post) => ({
-            ...post,
-            // Format the post data with a string which determines the time of when a post was created relative to the current time
+          // Since each time the selectUserFeedData is changed, the entire postData state is returned with old and
+          // new posts, we must filter out the old posts so we dont duplicate it in our userFeedPosts array
+          const newPosts = postData.filter(
+            (newPost) => !this.uniquePostIds.has(newPost.id)
+          );
 
-            formattedTimeAgo: timeAgoFromString(post.created_at),
-          }));
+          // Update the Set with the IDs of the new posts
+          newPosts.forEach((newPost) => {
+            this.uniquePostIds.add(newPost.id);
+          });
+
+          // Append the new posts to the existing userFeedPosts array
+          this.userFeedPosts = [
+            ...this.userFeedPosts,
+            ...newPosts.map((post) => ({
+              ...post,
+              formattedTimeAgo: timeAgoFromString(post.created_at),
+            })),
+          ];
+        })
+    );
+
+    this.subscriptions.push(
+      this.store
+        .select(selectUserFeedHasMoreData)
+        .pipe(takeUntil(this.destroyed$))
+        .subscribe((hasMoreData) => {
+          this.hasMoreUserFeedData = hasMoreData;
         })
     );
 
@@ -127,6 +162,22 @@ export class HomeComponent implements OnInit, OnDestroy {
           this.postActionsError = error;
         })
     );
+  }
+
+  loadMoreFeed(event: Event) {
+    // Increment the current page of paginated user feed data
+    this.currentUserFeedPage++;
+
+    // Dispatch the action with the updated page parameter
+    this.store.dispatch(
+      UserFeedActions.loadUserFeed({ page: this.currentUserFeedPage })
+    );
+
+    setTimeout(() => {
+      // Complete the infinite scroll event to indicate that loading is done
+      (event as InfiniteScrollCustomEvent).target.complete();
+      // Scroll back to the previous position
+    }, 500);
   }
 
   setOpen(isOpen: boolean) {

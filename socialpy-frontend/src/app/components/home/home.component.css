@@ -1,18 +1,32 @@
 .feed-row {
   display: flex;
   flex-wrap: wrap;
-  --feed-content-spacing: 10px;
+
+  --feed-card-bottom-padding: 20px;
+  --feed-card-margin: 2% 0;
+
+  --feed-content-vert-spacing: 5px;
+  --feed-content-hor-spacing: 10px;
+
+  --feed-img-padding: 2% 0;
+  --feed-img-max-height: 600px;
+  --feed-img-overflow: hidden;
+
+  --liked-heart-color: rgb(255, 48, 64);
 }
 
 .feed-card {
-  height: auto;
   display: flex;
-  margin: 2% 0;
   flex-direction: column;
+  height: auto;
+  padding-bottom: var(--feed-card-bottom-padding);
+  margin: var(--feed-card-margin);
+  box-shadow: none !important;
+  border: none !important;
+  border-bottom: 1px solid #ccc !important;
 }
 
 .profile-info {
-  padding: var(--feed-content-spacing);
   display: flex;
   align-items: center;
 }
@@ -20,7 +34,7 @@
 .profile-circle {
   display: inline-flex;
   align-items: center;
-  margin-right: 8px;
+  padding-right: var(--feed-content-hor-spacing);
   cursor: pointer;
 }
 
@@ -47,24 +61,24 @@
 }
 
 .small-icon {
-  margin-left: 8px;
+  padding-left: 8px;
   font-size: 3px;
 }
 
 .post-date {
-  margin-left: 4px;
+  padding-left: 4px;
 }
 
 .feed-image-container {
-  margin: 2% 0;
+  padding: var(--feed-img-padding);
   position: relative;
-  overflow: hidden;
+  overflow: var(--feed-img-overflow);
 }
 
 .feed-image {
   width: 100%;
   object-fit: cover;
-  max-height: 600px;
+  max-height: var(--feed-img-max-height);
 }
 
 .post-interactions-buttons {
@@ -75,18 +89,18 @@
 .like-button,
 .comment-button {
   cursor: pointer;
-  padding: 0 var(--feed-content-spacing);
+  padding: var(--feed-content-vert-spacing) var(--feed-content-hor-spacing);
 }
 
 .liked-heart {
-  color: rgb(255, 48, 64);
+  color: var(--liked-heart-color);
 }
 
 ion-card-content {
-  padding: var(--feed-content-spacing);
+  padding: var(--feed-content-vert-spacing) var(--feed-content-hor-spacing);
 }
 
 .view-comments {
-  padding: var(--feed-content-spacing);
+  padding: var(--feed-content-vert-spacing) var(--feed-content-hor-spacing);
   font-weight: bold;
 }

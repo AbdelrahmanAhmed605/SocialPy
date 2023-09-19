@@ -1,7 +1,7 @@
 <ion-app>
-    <ion-content overflow-scroll="true">
+    <ion-content [scrollEvents]="true">
         <!-- Display Loading page while waiting to retrieve user feed data -->
-        <ng-container *ngIf="userFeedLoading">
+        <ng-container *ngIf="!initialLoadComplete">
             <app-loading-page></app-loading-page>
         </ng-container>
 
@@ -15,7 +15,7 @@
             (didDismiss)="setOpen(false)"></ion-alert>
 
 
-        <ng-container *ngIf=" !userFeedError && !userFeedLoading">
+        <ng-container *ngIf=" !userFeedError && initialLoadComplete">
             <ion-grid>
                 <ion-row class="feed-row">
                     <ion-col size-lg="6" offset-lg="3" size-md="8" offset-md="2" size-xs="12"
@@ -52,8 +52,8 @@
                             </div>
                             <ion-card-content>
                                 <div class="user-content">
-                                    <span class="username" (click)="goToUserProfilePage(feedPost.user.id)">{{
-                                        feedPost.user.username }}</span> {{ feedPost.content }}
+                                    <span class="username" (click)="goToUserProfilePage(feedPost.user.id)">
+                                        {{feedPost.user.username }}</span> {{ feedPost.content }}
                                     <a class="hashtags" *ngFor="let hashtag of feedPost.hashtags">
                                         #{{ hashtag.name}}
                                     </a>
@@ -67,5 +67,10 @@
                 </ion-row>
             </ion-grid>
         </ng-container>
+
+        <ion-infinite-scroll [disabled]="!hasMoreUserFeedData" (ionInfinite)="loadMoreFeed($event)">
+            <ion-infinite-scroll-content loadingText="Loading..."
+                loadingSpinner="bubbles"></ion-infinite-scroll-content>
+        </ion-infinite-scroll>
     </ion-content>
 </ion-app>
