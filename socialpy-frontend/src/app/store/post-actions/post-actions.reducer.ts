@@ -14,7 +14,7 @@ export interface LikedPostsState {
   error: any; // Holds any error that occurred during the liking or unliking of a post
 }
 
-// Define the initial state for the UserFeedState
+// Define the initial state for the LikedPostsState
 const initialState: LikedPostsState = {
   likedPostIds: [],
   error: null,
