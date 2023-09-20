@@ -1,11 +1,3 @@
-:root {
-  --ion-color-toolbar: transparent;
-}
-
-.ion-color-toolbar {
-  --ion-color-base: var(--ion-color-toolbar);
-}
-
 ion-grid {
   --ion-grid-padding: 0;
   --ion-grid-column-padding: 0;
@@ -19,7 +11,6 @@ ion-col {
 }
 
 .container {
-  background-color: #fff;
   height: 100%;
   display: flex;
   flex-direction: column;

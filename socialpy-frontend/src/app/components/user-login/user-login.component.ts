@@ -1,15 +1,37 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+
+import { Store } from '@ngrx/store';
+import { AppState } from 'src/app/store/app.state';
+import { selectAppTheme } from 'src/app/store/selectors/app-theme.selector';
+import { toggleAppTheme } from 'src/app/store/app-theme/app-theme.actions';
+
+import { takeUntil } from 'rxjs/operators';
+import { Subject } from 'rxjs';
+
 import { UserService } from 'src/app/api-services/user/user.service';
-import {AuthService} from 'src/utilities/auth';
+import { AuthService } from 'src/utilities/auth';
 
 @Component({
   selector: 'app-user-login',
   templateUrl: './user-login.component.html',
   styleUrls: ['./user-login.component.css'],
 })
-export class UserLoginComponent implements OnInit {
+export class UserLoginComponent implements OnInit, OnDestroy {
+  // Injects FormBuilder, Router, and UserService dependencies
+  constructor(
+    private fb: FormBuilder,
+    private router: Router, // Router for navigating between pages
+    private userService: UserService, // UserService for user-related API operations
+    private authService: AuthService, // AuthService for authentication related operations
+    private store: Store<AppState> // NgRx store for managing application state, using our defined store configuration <AppState>
+  ) {}
+
+  private destroyed$: Subject<void> = new Subject<void>(); // Subject to track component destruction for subscription cleanup
+
+  isDarkTheme!: boolean; // Represents the current selection of the app's theme
+
   // Initialize form groups and error variables
   loginForm: FormGroup = new FormGroup({});
   formSubmitted = false;
@@ -29,17 +51,26 @@ export class UserLoginComponent implements OnInit {
     },
   };
 
-  // Injects FormBuilder, Router, and UserService dependencies
-  constructor(
-    private fb: FormBuilder,
-    private router: Router, // Router for navigating between pages
-    private userService: UserService, // UserService for user-related API operations
-    private authService: AuthService
-  ) {}
-
   ngOnInit() {
     // Call the form creation function during component initialization
     this.createForm();
+
+    // Subscribe to changes in the app theme state and update the component's
+    // 'isDarkTheme' property accordingly. Use 'takeUntil' to automatically
+    // unsubscribe when the component is destroyed to prevent memory leaks.
+    this.store
+      .select(selectAppTheme)
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe((isDarkTheme) => {
+        this.isDarkTheme = isDarkTheme;
+      });
+  }
+
+  // Dispatch the toggleAppTheme action
+  // The reducer will change the isDarkTheme property in the App store's `selectAppTheme` selector
+  // The effect middleware of the action will set the toggled theme to the document body
+  toggleAppTheme() {
+    this.store.dispatch(toggleAppTheme());
   }
 
   // Create the form structure and validation rules
@@ -93,5 +124,11 @@ export class UserLoginComponent implements OnInit {
   // Redirect the user to the signup page if they don't have an account
   goToSignupPage() {
     this.router.navigate(['/signup']);
+  }
+
+  // Unsubscribe from all subscriptions when the component is destroyed
+  ngOnDestroy() {
+    this.destroyed$.next();
+    this.destroyed$.complete();
   }
 }
