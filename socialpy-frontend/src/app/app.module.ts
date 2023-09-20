@@ -24,11 +24,12 @@ import { HomeComponent } from './components/home/home.component';
 import { UserSignupComponent } from './components/user-signup/user-signup.component';
 import { UserLoginComponent } from './components/user-login/user-login.component';
 import { UserProfileComponent } from './components/user-profile/user-profile.component';
+import { ErrorPageComponent } from './components/error-page/error-page.component';
+import { LoadingPageComponent } from './components/loading-page/loading-page.component';
 
 import { UserFeedEffects } from './store/user-feed/user-feed.effects';
 import { PostActionsEffects } from './store/post-actions/post-actions.effects';
-import { ErrorPageComponent } from './components/error-page/error-page.component';
-import { LoadingPageComponent } from './components/loading-page/loading-page.component';
+import { AppThemeEffects } from './store/app-theme/app-theme.effects';
 
 @NgModule({
   declarations: [
@@ -53,7 +54,11 @@ import { LoadingPageComponent } from './components/loading-page/loading-page.com
     FormsModule,
     ReactiveFormsModule,
     StoreModule.forRoot(reducers),
-    EffectsModule.forRoot([UserFeedEffects, PostActionsEffects]),
+    EffectsModule.forRoot([
+      UserFeedEffects,
+      PostActionsEffects,
+      AppThemeEffects,
+    ]),
   ],
   providers: [AuthService, UserService, PostService],
   bootstrap: [AppComponent],

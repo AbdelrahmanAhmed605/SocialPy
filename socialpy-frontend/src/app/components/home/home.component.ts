@@ -39,6 +39,14 @@ import {
   styleUrls: ['./home.component.css'],
 })
 export class HomeComponent implements OnInit, OnDestroy {
+  constructor(
+    private router: Router,
+    private store: Store<AppState> // NgRx store for managing application state, using our defined store configuration <AppState>
+  ) {}
+
+  private destroyed$: Subject<void> = new Subject<void>(); // Subject to track component destruction for subscription cleanup
+  private subscriptions: Subscription[] = []; // Array to store active subscriptions to observables
+
   // Font Awesome icons
   faUser = faUser;
   faCircle = faCircle;
@@ -69,14 +77,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       },
     },
   ];
-
-  private destroyed$: Subject<void> = new Subject<void>();
-  private subscriptions: Subscription[] = [];
-
-  constructor(
-    private router: Router,
-    private store: Store<AppState> // Specify the AppState type
-  ) {}
 
   ngOnInit(): void {
     // Dispatch the action to load user feed
