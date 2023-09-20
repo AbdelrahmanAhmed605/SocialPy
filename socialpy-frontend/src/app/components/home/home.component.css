@@ -96,6 +96,11 @@
   color: var(--liked-heart-color);
 }
 
+.like-count {
+  padding: var(--feed-content-vert-spacing) var(--feed-content-hor-spacing);
+  font-weight: bold;
+}
+
 ion-card-content {
   padding: var(--feed-content-vert-spacing) var(--feed-content-hor-spacing);
 }
