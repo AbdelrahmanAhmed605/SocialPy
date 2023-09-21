@@ -1,0 +1,29 @@
+ion-item {
+  display: flex;
+  align-items: center;
+  padding: 2px 0;
+}
+
+ion-title {
+  text-align: center;
+}
+
+/* Style for the ion-avatar */
+ion-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  background-color: rgb(204, 204, 204);
+  cursor: pointer;
+}
+
+ion-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-username {
+  cursor: pointer;
+}
