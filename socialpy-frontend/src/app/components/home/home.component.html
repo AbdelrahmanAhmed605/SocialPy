@@ -14,7 +14,7 @@
         (didDismiss)="setOpen(false)"></ion-alert>
 
 
-    <ng-container *ngIf=" !userFeedError && initialLoadComplete">
+    <ng-container *ngIf="!userFeedError && initialLoadComplete">
         <ion-grid>
             <ion-row class="feed-row">
                 <ion-col size-lg="6" offset-lg="3" size-md="8" offset-md="2" size-xs="12"
@@ -48,6 +48,9 @@
                             <div class="comment-button">
                                 <fa-icon [icon]="faComment" size="xl"></fa-icon>
                             </div>
+                        </div>
+                        <div class="like-count">
+                            {{ feedPost.like_count + (feedPostLikeCounterChange[feedPost.id] || 0) }} likes
                         </div>
                         <ion-card-content>
                             <div class="user-content">

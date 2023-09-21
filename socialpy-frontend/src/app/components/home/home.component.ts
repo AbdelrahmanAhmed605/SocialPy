@@ -64,8 +64,10 @@ export class HomeComponent implements OnInit, OnDestroy {
   // Define a Set to keep track of IDs of unique post in the feed so repeated posts are not added when applying pagination
   private uniquePostIds = new Set<number>();
 
-  likedPostIds: number[] = []; // Contains the IDs of posts that were liked by the user
   postActionsError: any = null; // Tracks if any errors occur while liking/unliking a post
+  likedPostIds: number[] = []; // Contains the IDs of posts that were liked by the user
+  // Map to track how each feed post's like count should be changed (incremented/decremented) based on whether the user liked it or not
+  feedPostLikeCounterChange: { [postId: number]: number } = {};
 
   isAlertOpen: boolean = false; // Tracks the status of the alert element
   // Alert button displays a log in button to return the user to the log in page
@@ -197,9 +199,31 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (isLiked) {
       // Unlike the post
       this.store.dispatch(unlikePost({ postId }));
+
+      // Update the like count in the map
+      if (this.feedPostLikeCounterChange[postId]) {
+        // If the post already exists in the map, decrease its like count change by 1
+        // This accounts for unliking a previously liked post
+        this.feedPostLikeCounterChange[postId] -= 1;
+      } else {
+        // If the post is not in the map, set its like count change to -1
+        // This accounts for unliking a post just after page load
+        this.feedPostLikeCounterChange[postId] = -1;
+      }
     } else {
       // Like the post
       this.store.dispatch(likePost({ postId }));
+
+      // Update the like count in the map
+      if (this.feedPostLikeCounterChange[postId]) {
+        // If the post exists in the map, increase its like count by 1
+        // This accounts for liking a previously unliked post
+        this.feedPostLikeCounterChange[postId] += 1;
+      } else {
+        // If the post is not in the map, set its like count to 1
+        // This accounts for liking a post just after page load
+        this.feedPostLikeCounterChange[postId] = 1;
+      }
     }
 
     // Set isAlertOpen to true when an error occurs
