@@ -49,8 +49,14 @@
                                 <fa-icon [icon]="faComment" size="xl"></fa-icon>
                             </div>
                         </div>
-                        <div class="like-count">
-                            {{ feedPost.like_count + (feedPostLikeCounterChange[feedPost.id] || 0) }} likes
+                        <div class="like-count" (click)="openLikersModal(feedPost.id)"
+                            *ngIf="(feedPost.like_count + (feedPostLikeCounterChange[feedPost.id] || 0)) > 0">
+                            <ng-container *ngIf="(feedPost.like_count + (feedPostLikeCounterChange[feedPost.id] || 0)) === 1; else pluralLikes">
+                                {{ feedPost.like_count + (feedPostLikeCounterChange[feedPost.id] || 0) }} like
+                            </ng-container>
+                            <ng-template #pluralLikes>
+                                {{ feedPost.like_count + (feedPostLikeCounterChange[feedPost.id] || 0) }} likes
+                            </ng-template>
                         </div>
                         <ion-card-content>
                             <div class="user-content">
