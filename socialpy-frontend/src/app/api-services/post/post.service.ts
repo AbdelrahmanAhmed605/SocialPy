@@ -69,8 +69,8 @@ request's returned Observable structure. SwitchMap also preserves the token valu
     );
   }
 
-  postLikersList(postId: number): Observable<any> {
-    const likePostEndpoint = `post/${postId}/likers/`;
+  postLikersList(postId: number, page: number): Observable<any> {
+    const likePostEndpoint = `post/${postId}/likers/?page=${page}`;
 
     return this.authService.handleAuthenticationToken().pipe(
       switchMap((token) => {

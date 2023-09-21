@@ -1,6 +1,6 @@
 import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
-import { ModalController } from '@ionic/angular';
+import { InfiniteScrollCustomEvent, ModalController } from '@ionic/angular';
 
 import { PostLikersResponse } from 'src/app/interface-types/post-likers.model';
 
@@ -21,7 +21,11 @@ export class PostLikersModalComponent implements OnInit, OnDestroy {
     private postService: PostService
   ) {}
 
+  // Contains a list of users who liked a post
   likers: any[] = [];
+  currentUserLikersPage = 1; // keep track of the current page of user likers (for pagination)
+  hasMoreUserLikersData: boolean = false; // Keeps track if there is more paginated data
+
   // Font Awesome icons
   faXmark = faXmark;
   faUser = faUser;
@@ -33,15 +37,30 @@ export class PostLikersModalComponent implements OnInit, OnDestroy {
 
   // Call the service api function to retrieve the list of users who liked a post
   async fetchLikers() {
-    this.postService.postLikersList(this.postId).subscribe({
+    this.postService.postLikersList(this.postId, this.currentUserLikersPage).subscribe({
       next: (data: PostLikersResponse) => {
-        this.likers = data.results;
+        this.hasMoreUserLikersData = !!data.next; // Check if there is more paginated data
+        this.likers = [...this.likers, ...data.results]; // Append new results to existing likers
       },
       error: (error) => {
         // Handle any errors here
         console.error('Error fetching likers:', error);
       },
     });
+  }
+
+  loadMoreLikers(event: Event) {
+    // Increment the current page of paginated user likers data
+    this.currentUserLikersPage++;
+
+    // Call the service api with the updated page parameter
+    this.fetchLikers();
+
+    setTimeout(() => {
+      // Complete the infinite scroll event to indicate that loading is done
+      (event as InfiniteScrollCustomEvent).target.complete();
+      // Scroll back to the previous position
+    }, 500);
   }
 
   // Function to close the modal display

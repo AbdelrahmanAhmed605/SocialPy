@@ -231,6 +231,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.isAlertOpen = !!this.postActionsError;
   }
 
+  // Function to create the modal to display the list of users who liked the specified post
   async openLikersModal(postId: number) {
     const modal = await this.modalCtrl.create({
       component: PostLikersModalComponent,
