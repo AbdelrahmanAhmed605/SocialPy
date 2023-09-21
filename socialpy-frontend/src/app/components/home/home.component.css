@@ -99,6 +99,7 @@
 .like-count {
   padding: var(--feed-content-vert-spacing) var(--feed-content-hor-spacing);
   font-weight: bold;
+  cursor: pointer;
 }
 
 ion-card-content {
