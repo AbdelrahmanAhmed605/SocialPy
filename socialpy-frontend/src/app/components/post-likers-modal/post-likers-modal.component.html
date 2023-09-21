@@ -1,0 +1,30 @@
+<ion-content>
+    <ion-header>
+        <ion-toolbar>
+            <ion-title>Likes</ion-title>
+            <ion-buttons slot="end">
+                <ion-button (click)="closeModal()">
+                    <fa-icon size="xl" [icon]="faXmark"></fa-icon>
+                </ion-button>
+            </ion-buttons>
+        </ion-toolbar>
+    </ion-header>
+    <ion-list>
+        <ion-item *ngFor="let liker of likers">
+            <ion-avatar slot="start" (click)="goToUserProfilePage(liker.id)">
+                <ng-container *ngIf="liker.profile_picture; else noProfilePicture">
+                    <img [src]="liker.profile_picture" alt="Profile Picture" />
+                </ng-container>
+                <ng-template #noProfilePicture>
+                    <fa-icon [icon]="faUser"></fa-icon>
+                </ng-template>
+            </ion-avatar>
+            <ion-label (click)="goToUserProfilePage(liker.id)" class="user-username">
+                {{ liker.username}}
+            </ion-label>
+        </ion-item>
+    </ion-list>
+    <ion-infinite-scroll [disabled]="!hasMoreUserLikersData" (ionInfinite)="loadMoreLikers($event)">
+        <ion-infinite-scroll-content loadingText="Loading..." loadingSpinner="bubbles"></ion-infinite-scroll-content>
+    </ion-infinite-scroll>
+</ion-content>

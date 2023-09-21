@@ -26,6 +26,7 @@ import { UserLoginComponent } from './components/user-login/user-login.component
 import { UserProfileComponent } from './components/user-profile/user-profile.component';
 import { ErrorPageComponent } from './components/error-page/error-page.component';
 import { LoadingPageComponent } from './components/loading-page/loading-page.component';
+import { PostLikersModalComponent } from './components/post-likers-modal/post-likers-modal.component';
 
 import { UserFeedEffects } from './store/user-feed/user-feed.effects';
 import { PostActionsEffects } from './store/post-actions/post-actions.effects';
@@ -40,6 +41,7 @@ import { AppThemeEffects } from './store/app-theme/app-theme.effects';
     UserProfileComponent,
     ErrorPageComponent,
     LoadingPageComponent,
+    PostLikersModalComponent,
   ],
   imports: [
     HttpClientModule,

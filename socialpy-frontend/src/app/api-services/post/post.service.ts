@@ -68,4 +68,27 @@ request's returned Observable structure. SwitchMap also preserves the token valu
       })
     );
   }
+
+  postLikersList(postId: number, page: number): Observable<any> {
+    const likePostEndpoint = `post/${postId}/likers/?page=${page}`;
+
+    return this.authService.handleAuthenticationToken().pipe(
+      switchMap((token) => {
+        // Set the headers with the Authorization token
+        const headers = new HttpHeaders({
+          Authorization: `Token ${token}`,
+        });
+
+        // Get the list of users who liked the specified post
+        return this.http.get(`${API_BASE_URL}/${likePostEndpoint}`, {
+          headers,
+          withCredentials: true,
+        });
+      }),
+      catchError((error) => {
+        // throw the error
+        return throwError(() => error);
+      })
+    );
+  }
 }
