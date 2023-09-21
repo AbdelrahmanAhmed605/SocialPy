@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
-import { InfiniteScrollCustomEvent } from '@ionic/angular';
+import { InfiniteScrollCustomEvent, ModalController } from '@ionic/angular';
 
 import { Subscription, Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -24,6 +24,8 @@ import {
 } from 'src/app/store/post-actions/post-actions.actions';
 import * as UserFeedActions from 'src/app/store/user-feed/user-feed.actions';
 
+import { PostLikersModalComponent } from '../post-likers-modal/post-likers-modal.component';
+
 import timeAgoFromString from 'src/utilities/dateTime';
 
 import { faHeart, faComment } from '@fortawesome/free-regular-svg-icons';
@@ -41,7 +43,8 @@ import {
 export class HomeComponent implements OnInit, OnDestroy {
   constructor(
     private router: Router,
-    private store: Store<AppState> // NgRx store for managing application state, using our defined store configuration <AppState>
+    private store: Store<AppState>, // NgRx store for managing application state, using our defined store configuration <AppState>
+    private modalCtrl: ModalController,
   ) {}
 
   private destroyed$: Subject<void> = new Subject<void>(); // Subject to track component destruction for subscription cleanup
@@ -202,8 +205,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
       // Update the like count in the map
       if (this.feedPostLikeCounterChange[postId]) {
-        // If the post already exists in the map, decrease its like count change by 1
-        // This accounts for unliking a previously liked post
+        // If the post already exists in the map, decrease its like count change by 1 to avoid double reduction in like count
         this.feedPostLikeCounterChange[postId] -= 1;
       } else {
         // If the post is not in the map, set its like count change to -1
@@ -216,8 +218,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
       // Update the like count in the map
       if (this.feedPostLikeCounterChange[postId]) {
-        // If the post exists in the map, increase its like count by 1
-        // This accounts for liking a previously unliked post
+        // If the post exists in the map, increase its like count by 1 to avoid double increment of the like count
         this.feedPostLikeCounterChange[postId] += 1;
       } else {
         // If the post is not in the map, set its like count to 1
@@ -228,6 +229,17 @@ export class HomeComponent implements OnInit, OnDestroy {
 
     // Set isAlertOpen to true when an error occurs
     this.isAlertOpen = !!this.postActionsError;
+  }
+
+  async openLikersModal(postId: number) {
+    const modal = await this.modalCtrl.create({
+      component: PostLikersModalComponent,
+      componentProps: {
+        postId: postId, // Pass the postId to the modal component
+      },
+    });
+
+    modal.present();
   }
 
   // Redirect the user to the profile page associated with the user they are attempting to view
