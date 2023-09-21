@@ -15,7 +15,7 @@ import { UserService } from 'src/app/api-services/user/user.service';
 
 import * as UserFeedActions from 'src/app/store/user-feed/user-feed.actions';
 import * as PostActions from 'src/app/store/post-actions/post-actions.actions';
-import { Post } from './user-feed.model';
+import { Post } from '../../interface-types/user-feed.model';
 
 import { selectLikedPostIds } from '../selectors/post-actions.selector';
 import { AppState } from '../app.state';
@@ -42,7 +42,7 @@ export class UserFeedEffects {
           // Process the API response and liked post IDs
           mergeMap(([apiResponse, likedPostIds]) => {
             const results = apiResponse.results as Post[];
-            const nextResultExists = apiResponse.next; // Boolean that determines if there is more paginated data 
+            const nextResultExists = apiResponse.next; // Boolean that determines if there is more paginated data
 
             /*
             - The filter accesses the returned API feed results and looks for posts that have already been liked by 

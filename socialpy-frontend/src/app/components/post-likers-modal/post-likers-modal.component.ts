@@ -2,7 +2,7 @@ import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { ModalController } from '@ionic/angular';
 
-import { PostLikersResponse } from 'src/app/interface-types/post-likers';
+import { PostLikersResponse } from 'src/app/interface-types/post-likers.model';
 
 import { PostService } from 'src/app/api-services/post/post.service';
 

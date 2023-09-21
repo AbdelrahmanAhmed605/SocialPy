@@ -1,5 +1,5 @@
 import { createAction, props } from '@ngrx/store';
-import { Post } from './user-feed.model'; // Represents the structure of a post object received from the API.
+import { Post } from '../../interface-types/user-feed.model'; // Represents the structure of a post object received from the API.
 
 // Action to initiate fetching the user's feed
 export const loadUserFeed = createAction(

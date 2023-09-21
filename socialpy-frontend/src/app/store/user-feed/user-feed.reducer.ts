@@ -1,6 +1,6 @@
 import { createReducer, on } from '@ngrx/store';
 import * as UserFeedActions from './user-feed.actions';
-import { Post } from './user-feed.model';
+import { Post } from '../../interface-types/user-feed.model';
 
 // Define the shape of the UserFeedState
 export interface UserFeedState {
