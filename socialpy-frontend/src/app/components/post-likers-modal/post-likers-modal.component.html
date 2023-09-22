@@ -27,7 +27,7 @@
                 Follow
             </ion-button>
             <!-- Button to show "Following" or "Requested" baed on the requesting user's follow status -->
-            <ion-button [ngStyle]="{'--background':'var(--ion-color-medium-shade)'}"
+            <ion-button (click)="unfollowUser(liker.id)" [ngStyle]="{'--background':'var(--ion-color-medium-shade)'}"
                 *ngIf="liker.requesting_user_follow_status === 'accepted' || liker.requesting_user_follow_status === 'pending'">
                 {{ liker.requesting_user_follow_status === 'accepted' ? 'Following' : 'Requested' }}
             </ion-button>

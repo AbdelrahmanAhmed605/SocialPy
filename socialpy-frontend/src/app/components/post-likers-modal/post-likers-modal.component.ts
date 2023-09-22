@@ -103,10 +103,52 @@ export class PostLikersModalComponent implements OnInit {
     });
   }
 
-  // Display an error ionic toast at the top of the page to alert the user if an error occured
+  // Display an error ionic toast at the top of the page to alert the user if an error occured following a user
   async followUserErrorToast() {
     const toast = await this.toastCtrl.create({
       message: 'Error following user',
+      duration: 1500,
+      position: 'top',
+    });
+
+    await toast.present();
+  }
+
+  // Function to unfollow a user with a specified id
+  unfollowUser(userId: number) {
+    // Call the service API function to unfollow the user
+    this.followService.unfollowUser(userId).subscribe({
+      next: (response) => {
+        if (response) {
+          // Find the index of the user in the likers array
+          const userIndex = this.likers.findIndex(
+            (liker) => liker.id === userId
+          );
+          if (userIndex !== -1) {
+            // Update the requesting_user_follow_status based on the API response to update the UI
+            this.likers[userIndex].requesting_user_follow_status =
+              response.follow_status;
+          } else {
+            console.error(
+              'An error occurred while processing your request. Please try again later.'
+            );
+            // Display a toast message to alert the user an error occured
+            this.unfollowUserErrorToast();
+          }
+        }
+      },
+      error: (error) => {
+        console.error('Error unfollowing user:', error);
+        // Display a toast message to alert the user an error occured
+        this.unfollowUserErrorToast();
+      },
+    });
+  }
+
+  // Display an error ionic toast at the top of the page to alert the user if an error occured unfollowing a user
+  async unfollowUserErrorToast() {
+    const toast = await this.toastCtrl.create({
+      message: 'Error unfollowing user',
       duration: 1500,
       position: 'top',
     });
