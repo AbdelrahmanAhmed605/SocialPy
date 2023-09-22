@@ -70,7 +70,7 @@ request's returned Observable structure. SwitchMap also preserves the token valu
   }
 
   postLikersList(postId: number, page: number): Observable<any> {
-    const likePostEndpoint = `post/${postId}/likers/?page=${page}`;
+    const postLikersEndpoint = `post/${postId}/likers/?page=${page}`;
 
     return this.authService.handleAuthenticationToken().pipe(
       switchMap((token) => {
@@ -80,7 +80,7 @@ request's returned Observable structure. SwitchMap also preserves the token valu
         });
 
         // Get the list of users who liked the specified post
-        return this.http.get(`${API_BASE_URL}/${likePostEndpoint}`, {
+        return this.http.get(`${API_BASE_URL}/${postLikersEndpoint}`, {
           headers,
           withCredentials: true,
         });
