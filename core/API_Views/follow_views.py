@@ -72,6 +72,7 @@ def follow_user(request, user_id):
         return Response({"error": "An error occurred while processing the follow request"},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     # Return a repsonse containing the status of the follow request (accepted or pending)
+    # as this will be used by the frontend to update the UI
     return Response({"follow_status": follow_status},status=status.HTTP_201_CREATED)
 
 
@@ -202,7 +203,8 @@ def unfollow_user(request, user_id):
     except Exception as e:
         return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    return Response({"message": "You have unfollowed this user"}, status=status.HTTP_200_OK)
+    # Return a false follow status as this will be used by the frontend to change the UI
+    return Response({"follow_status": False},status=status.HTTP_200_OK)
 
 
 # Endpoint: /api/follower_list/{user_id}/?page={}
