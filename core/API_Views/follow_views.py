@@ -71,9 +71,8 @@ def follow_user(request, user_id):
     except Exception as e:
         return Response({"error": "An error occurred while processing the follow request"},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    return Response(
-        {"message": "Follow request sent" if follow_status == 'pending' else "You are now following this user"},
-        status=status.HTTP_201_CREATED)
+    # Return a repsonse containing the status of the follow request (accepted or pending)
+    return Response({"follow_status": follow_status},status=status.HTTP_201_CREATED)
 
 
 # Endpoint: /api/respond_follow_request/user/{user_id}
