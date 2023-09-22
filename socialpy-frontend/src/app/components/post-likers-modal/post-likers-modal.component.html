@@ -22,6 +22,15 @@
             <ion-label (click)="goToUserProfilePage(liker.id)" class="user-username">
                 {{ liker.username}}
             </ion-label>
+            <!-- Button to show "Follow" for users the requesting user is not following -->
+            <ion-button *ngIf="liker.requesting_user_follow_status === false" (click)="followUser(liker.id)">
+                Follow
+            </ion-button>
+            <!-- Button to show "Following" or "Requested" baed on the requesting user's follow status -->
+            <ion-button (click)="unfollowUser(liker.id)" [ngStyle]="{'--background':'var(--ion-color-medium-shade)'}"
+                *ngIf="liker.requesting_user_follow_status === 'accepted' || liker.requesting_user_follow_status === 'pending'">
+                {{ liker.requesting_user_follow_status === 'accepted' ? 'Following' : 'Requested' }}
+            </ion-button>
         </ion-item>
     </ion-list>
     <ion-infinite-scroll [disabled]="!hasMoreUserLikersData" (ionInfinite)="loadMoreLikers($event)">

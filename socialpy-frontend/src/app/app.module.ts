@@ -18,6 +18,7 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { AuthService } from 'src/utilities/auth';
 import { UserService } from './api-services/user/user.service';
 import { PostService } from './api-services/post/post.service';
+import { FollowService } from './api-services/follow/follow.service';
 
 import { AppComponent } from './app.component';
 import { HomeComponent } from './components/home/home.component';
@@ -62,7 +63,7 @@ import { AppThemeEffects } from './store/app-theme/app-theme.effects';
       AppThemeEffects,
     ]),
   ],
-  providers: [AuthService, UserService, PostService],
+  providers: [AuthService, UserService, PostService, FollowService],
   bootstrap: [AppComponent],
 })
 export class AppModule {}
