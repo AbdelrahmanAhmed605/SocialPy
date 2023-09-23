@@ -109,4 +109,5 @@ ion-card-content {
 .view-comments {
   padding: var(--feed-content-vert-spacing) var(--feed-content-hor-spacing);
   font-weight: bold;
+  cursor: pointer;
 }
