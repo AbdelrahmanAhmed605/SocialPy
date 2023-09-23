@@ -1,0 +1,31 @@
+<ion-content>
+    <ion-header>
+        <ion-toolbar>
+            <ion-title>Comments</ion-title>
+            <ion-buttons slot="end">
+                <ion-button (click)="closeModal()">
+                    <fa-icon size="xl" [icon]="faXmark"></fa-icon>
+                </ion-button>
+            </ion-buttons>
+        </ion-toolbar>
+    </ion-header>
+
+    <ion-list class="comments-list">
+        <ion-item *ngFor="let comment of comments" class="comment-item">
+            <ion-avatar slot="start" (click)="goToUserProfilePage(comment.user.id)">
+                <ng-container *ngIf="comment.user.profile_picture; else noProfilePicture">
+                    <img [src]="comment.user.profile_picture" alt="Profile Picture" />
+                </ng-container>
+                <ng-template #noProfilePicture>
+                    <fa-icon [icon]="faUser"></fa-icon>
+                </ng-template>
+            </ion-avatar>
+            <ion-label class="user-info">
+                <h3 class="user-username" (click)="goToUserProfilePage(comment.user.id)">
+                    {{ comment.user.username }}
+                </h3>
+                <ion-text class="user-comment">{{ comment.content }}</ion-text>
+            </ion-label>
+        </ion-item>
+    </ion-list>
+</ion-content>
