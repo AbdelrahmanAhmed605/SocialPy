@@ -36,4 +36,37 @@ export class CommentService {
       })
     );
   }
+
+  // API call to create a comment for a specified post
+  createComment(postId: number, commentContent: string): Observable<any> {
+    const postCommentEndpoint = `comment/post/${postId}/`;
+
+    return this.authService.handleAuthenticationToken().pipe(
+      switchMap((token) => {
+        // Set the headers with the Authorization token
+        const headers = new HttpHeaders({
+          Authorization: `Token ${token}`,
+        });
+
+        // Define the request body with the comment
+        const requestBody = {
+          content: commentContent,
+        };
+
+        // Make an HTTP POST request to create the comment
+        return this.http.post(
+          `${API_BASE_URL}/${postCommentEndpoint}`,
+          requestBody,
+          {
+            headers,
+            withCredentials: true,
+          }
+        );
+      }),
+      catchError((error) => {
+        // Throw the error
+        return throwError(() => error);
+      })
+    );
+  }
 }

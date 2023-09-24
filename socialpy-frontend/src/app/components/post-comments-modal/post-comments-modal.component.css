@@ -8,8 +8,6 @@ ion-content::part(scroll) {
 }
 
 ion-item {
-  display: flex;
-  align-items: center;
   padding: 2px 0;
 }
 
@@ -19,7 +17,8 @@ ion-title {
 
 ion-avatar {
   display: inline-flex;
-  align-self: flex-start;
+  align-items: center;
+  justify-content: center;
   margin-right: 10px;
   background-color: rgb(204, 204, 204);
   cursor: pointer;
@@ -36,17 +35,59 @@ ion-avatar fa-icon {
   color: white;
 }
 
-.user-info {
+.comment-label {
   padding-left: 10px;
   padding-bottom: 10px;
 }
 
+.comment-user-info {
+  display: flex;
+  align-items: center;
+}
+
 .user-username {
   font-weight: 500;
-  margin-bottom: 4px;
   cursor: pointer;
 }
 
-.user-comment {
+.small-icon {
+  padding-left: 8px;
+  font-size: 3px;
+}
+
+.comment-date {
+  padding-left: 4px;
+}
+
+.comment-content {
   white-space: normal;
+}
+
+.comment-form {
+  position: sticky;
+  width: 100%;
+  bottom: 0;
+  z-index: 5;
+}
+
+.comment-form form ion-item {
+  padding: 0;
+  --inner-padding-end: 0;
+}
+
+/* Remove the background box from ion-button */
+ion-button.comment-button {
+  --background: transparent;
+  --color: rgb(0, 149, 246);
+  --border-width: 0;
+  --box-shadow: none;
+  --border-radius: 0;
+  --padding-start: 0;
+  --padding-end: 0;
+  margin-right: 10px;
+  font-size: 15px;
+}
+
+ion-button.comment-button:hover {
+  --background: transparent;
 }

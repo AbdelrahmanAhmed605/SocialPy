@@ -20,15 +20,37 @@
                     <fa-icon [icon]="faUser"></fa-icon>
                 </ng-template>
             </ion-avatar>
-            <ion-label class="user-info">
-                <h3 class="user-username" (click)="goToUserProfilePage(comment.user.id)">
-                    {{ comment.user.username }}
-                </h3>
-                <ion-text class="user-comment">{{ comment.content }}</ion-text>
+            <ion-label class="comment-label">
+                <div class="comment-user-info">
+                    <h3 class="user-username" (click)="goToUserProfilePage(comment.user.id)">
+                        {{ comment.user.username }}
+                    </h3>
+                    <fa-icon [icon]="faCircle" size="xs" class="small-icon"></fa-icon>
+                    <span class="comment-date">{{ comment.formattedTimeAgo }}</span>
+                </div>
+                <ion-text class="comment-content">{{ comment.content }}</ion-text>
             </ion-label>
         </ion-item>
     </ion-list>
     <ion-infinite-scroll [disabled]="!hasMoreCommentsData" (ionInfinite)="loadMoreComments($event)">
         <ion-infinite-scroll-content loadingText="Loading..." loadingSpinner="bubbles"></ion-infinite-scroll-content>
     </ion-infinite-scroll>
+
+    <div class="comment-form">
+        <form (submit)="submitComment()">
+            <ion-item>
+                <ion-textarea [(ngModel)]="userComment" name="comment" class="comment-textarea" placeholder="Add a comment..." [autoGrow]="true"
+                   (keydown)="onTextareaKeyDown($event)" aria-label="Enter your comment on the post here">
+                </ion-textarea>
+                <ion-button slot="end" type="submit" [disabled]="submittingComment" class="comment-button">
+                    <ng-container *ngIf="!submittingComment; else loadingTemplate">
+                        Post
+                    </ng-container>
+                    <ng-template #loadingTemplate>
+                        <ion-spinner name="lines"></ion-spinner>
+                    </ng-template>
+                </ion-button>
+            </ion-item>
+        </form>
+    </div>
 </ion-content>
