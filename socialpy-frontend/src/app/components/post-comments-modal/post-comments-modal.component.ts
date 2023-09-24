@@ -1,6 +1,6 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { ModalController } from '@ionic/angular';
+import { ModalController, InfiniteScrollCustomEvent } from '@ionic/angular';
 
 import { PostCommentsResponse } from 'src/app/interface-types/post-comments.model';
 
@@ -23,6 +23,8 @@ export class PostCommentsModalComponent implements OnInit {
 
   // Contains a list of comments for a post
   comments: any[] = [];
+  currentCommentsPage = 1; // keep track of the current page of comments (for pagination)
+  hasMoreCommentsData: boolean = false; // Keeps track if there is more paginated data
 
   // Font Awesome icons
   faXmark = faXmark;
@@ -35,16 +37,32 @@ export class PostCommentsModalComponent implements OnInit {
 
   // Call the service api function to retrieve the comments for a specified post
   async fetchComments() {
-    this.commentService.getPostComments(this.postId).subscribe({
-      next: (data: PostCommentsResponse) => {
-        console.log(data);
-        this.comments = [...this.comments, ...data.results]; // Append new results to existing likers
-      },
-      error: (error) => {
-        // Handle any errors here
-        console.error('Error fetching comments:', error);
-      },
-    });
+    this.commentService
+      .getPostComments(this.postId, this.currentCommentsPage)
+      .subscribe({
+        next: (data: PostCommentsResponse) => {
+          this.hasMoreCommentsData = !!data.next; // Check if there is more paginated data
+          this.comments = [...this.comments, ...data.results]; // Append new results to existing likers
+        },
+        error: (error) => {
+          console.error('Error fetching comments:', error);
+        },
+      });
+  }
+
+  // Function used with ionic infinte scrolling to get the next page of paginated comments data
+  loadMoreComments(event: Event) {
+    // Increment the current page of paginated comments data
+    this.currentCommentsPage++;
+
+    // Call the service api with the updated page parameter
+    this.fetchComments();
+
+    setTimeout(() => {
+      // Complete the infinite scroll event to indicate that loading is done
+      (event as InfiniteScrollCustomEvent).target.complete();
+      // Scroll back to the previous position
+    }, 500);
   }
 
   // Function to close the modal display

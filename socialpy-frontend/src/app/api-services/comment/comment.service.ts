@@ -14,8 +14,8 @@ export class CommentService {
   constructor(private http: HttpClient, private authService: AuthService) {}
 
   // API call to get comments for a specified post
-  getPostComments(postId: number): Observable<any> {
-    const postCommentsEndpoint = `comments/post/${postId}/`;
+  getPostComments(postId: number, page: number): Observable<any> {
+    const postCommentsEndpoint = `comments/post/${postId}/?page=${page}`;
 
     return this.authService.handleAuthenticationToken().pipe(
       switchMap((token) => {
