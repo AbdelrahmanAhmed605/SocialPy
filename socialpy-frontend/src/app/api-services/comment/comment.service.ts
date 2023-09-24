@@ -69,4 +69,28 @@ export class CommentService {
       })
     );
   }
+
+  // API call to delete a specific comment
+  deleteComment(commentId: number): Observable<any> {
+    const commentEndpoint = `comment/${commentId}/`;
+
+    return this.authService.handleAuthenticationToken().pipe(
+      switchMap((token) => {
+        // Set the headers with the Authorization token
+        const headers = new HttpHeaders({
+          Authorization: `Token ${token}`,
+        });
+
+        // Make an HTTP DELETE request to delete the comment
+        return this.http.delete(`${API_BASE_URL}/${commentEndpoint}`, {
+          headers,
+          withCredentials: true,
+        });
+      }),
+      catchError((error) => {
+        // Throw the error
+        return throwError(() => error);
+      })
+    );
+  }
 }
