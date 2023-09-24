@@ -1,0 +1,111 @@
+ion-content::part(scroll) {
+  overflow-y: var(--overflow);
+  overscroll-behavior-y: contain;
+}
+
+/* Apply a background to hovered items so the user can see which ion-item/comment they are hovering over*/
+.comment-item:hover ion-item {
+  --background: var(--ion-color-light-shade);
+}
+
+ion-title {
+  text-align: center;
+}
+
+ion-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  background-color: rgb(204, 204, 204);
+  cursor: pointer;
+}
+
+ion-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+ion-avatar fa-icon {
+  background-color: rgb(204, 204, 204);
+  color: white;
+}
+
+.comment-label {
+  padding-left: 10px;
+  padding-bottom: 10px;
+}
+
+.comment-user-info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.user-username {
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.small-icon {
+  padding-left: 8px;
+  font-size: 3px;
+}
+
+.comment-date {
+  padding-left: 4px;
+}
+
+/* Set the element which opens the alert to display none, the element will only be displayed when its 
+corresponding ion-item is hovered over*/
+.comment-actions-alert {
+  display: none;
+  margin-left: auto;
+  font-weight: bolder;
+  cursor: pointer;
+}
+.comment-item:hover .comment-actions-alert {
+  display: inline-block;
+}
+
+/* Allows comment text to wrap to a new line according to the containers width*/
+.comment-content {
+  white-space: normal;
+}
+
+/* Places the form at the bottom of the commponet and position sticky allows it to always be visible as the 
+user scrolls through the comments*/
+.comment-form {
+  position: sticky;
+  width: 100%;
+  bottom: 0;
+  z-index: 5;
+}
+
+.comment-form form ion-item {
+  padding: 0;
+  --inner-padding-end: 0;
+}
+
+/* Remove the background box from ion-button */
+ion-button.comment-button {
+  --background: transparent;
+  --color: rgb(0, 149, 246);
+  --border-width: 0;
+  --box-shadow: none;
+  --border-radius: 0;
+  --padding-start: 0;
+  --padding-end: 0;
+  margin-right: 10px;
+  font-size: 15px;
+}
+
+ion-button.comment-button:hover {
+  --background: transparent;
+}
+
+/* Add spacing around the delete fa-icon inside the ionic sliding option*/
+.sliding-delete-comment {
+  padding: 0 5px;
+}

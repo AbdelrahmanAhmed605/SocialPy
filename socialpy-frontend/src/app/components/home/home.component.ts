@@ -1,6 +1,10 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
-import { InfiniteScrollCustomEvent, ModalController } from '@ionic/angular';
+import {
+  InfiniteScrollCustomEvent,
+  ModalController,
+  Platform,
+} from '@ionic/angular';
 
 import { Subscription, Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -25,6 +29,7 @@ import {
 import * as UserFeedActions from 'src/app/store/user-feed/user-feed.actions';
 
 import { PostLikersModalComponent } from '../post-likers-modal/post-likers-modal.component';
+import { PostCommentsModalComponent } from '../post-comments-modal/post-comments-modal.component';
 
 import timeAgoFromString from 'src/utilities/dateTime';
 
@@ -45,6 +50,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     private router: Router,
     private store: Store<AppState>, // NgRx store for managing application state, using our defined store configuration <AppState>
     private modalCtrl: ModalController,
+    private platform: Platform
   ) {}
 
   private destroyed$: Subject<void> = new Subject<void>(); // Subject to track component destruction for subscription cleanup
@@ -240,6 +246,27 @@ export class HomeComponent implements OnInit, OnDestroy {
       },
     });
 
+    modal.present();
+  }
+
+  // Function to create the modal to display the list of comments for the specified post
+  async openCommentsModal(postId: number) {
+    const modalOptions: any = {
+      component: PostCommentsModalComponent,
+      componentProps: {
+        postId: postId, // Pass the postId to the modal component
+      },
+    };
+
+    // Check if the device is small (width less than 768 px)
+    // If the device is small then apply breakpoints to create an ionic sheet modal view for the modal
+    if (this.platform.width() < 768) {
+      modalOptions.breakpoints = [0, 0.7, 1.0];
+      modalOptions.initialBreakpoint = 1.0;
+    }
+
+    // Create the modal and present it
+    const modal = await this.modalCtrl.create(modalOptions);
     modal.present();
   }
 

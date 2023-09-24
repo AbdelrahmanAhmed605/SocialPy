@@ -1,0 +1,75 @@
+<ion-content>
+    <ion-header>
+        <ion-toolbar>
+            <ion-title>Comments</ion-title>
+            <ion-buttons slot="end">
+                <ion-button (click)="closeModal()">
+                    <fa-icon size="xl" [icon]="faXmark"></fa-icon>
+                </ion-button>
+            </ion-buttons>
+        </ion-toolbar>
+    </ion-header>
+
+    <ion-list class="comments-list">
+        <ion-item-sliding *ngFor="let comment of comments" class="comment-item">
+            <ion-item>
+                <!-- profile picture of the user associated with a comment -->
+                <ion-avatar slot="start" (click)="goToUserProfilePage(comment.user.id)">
+                    <ng-container *ngIf="comment.user.profile_picture; else noProfilePicture">
+                        <img [src]="comment.user.profile_picture" alt="Profile Picture" />
+                    </ng-container>
+                    <ng-template #noProfilePicture>
+                        <fa-icon [icon]="faUser"></fa-icon>
+                    </ng-template>
+                </ion-avatar>
+                <ion-label class="comment-label">
+                    <div class="comment-user-info">
+                        <h3 class="user-username" (click)="goToUserProfilePage(comment.user.id)">
+                            {{ comment.user.username }}
+                        </h3>
+                        <fa-icon [icon]="faCircle" size="xs" class="small-icon"></fa-icon>
+                        <span class="comment-date">{{ comment.formattedTimeAgo }}</span>
+                        <!-- For large devices, apply an element with an ellipses "...". When this element
+                        is clicked, the alert will open to display buttons with comment related actions -->
+                        <span class="comment-actions-alert" *ngIf="isLargeScreen() && comment.can_delete"
+                            (click)="openCommentActionsAlert(comment.id)">
+                            <fa-icon [icon]="faEllipsis"></fa-icon>
+                        </span>
+                    </div>
+                    <ion-text class="comment-content">{{ comment.content }}</ion-text>
+                </ion-label>
+            </ion-item>
+            <!-- for small devices, apply a sliding option to allow the user to swipe the comment to see the 
+            delete button to delete a comment. This is only applied to comments where the "comment.can_delete"
+            is set to true, meaning the user has access to delete the comment -->
+            <ion-item-options side="end" *ngIf="!isLargeScreen() && comment.can_delete">
+                <ion-item-option class="sliding-delete-comment" color="danger" (click)="deleteComment(comment.id)">
+                    <fa-icon size="xl" [icon]="faTrash"></fa-icon>
+                </ion-item-option>
+            </ion-item-options>
+        </ion-item-sliding>
+    </ion-list>
+    <!-- allows infinite scrolling to load more comments when the user scrolls to the bottom of the comment list -->
+    <ion-infinite-scroll [disabled]="!hasMoreCommentsData" (ionInfinite)="loadMoreComments($event)">
+        <ion-infinite-scroll-content loadingText="Loading..." loadingSpinner="bubbles"></ion-infinite-scroll-content>
+    </ion-infinite-scroll>
+
+    <div class="comment-form">
+        <form (submit)="submitComment()">
+            <ion-item>
+                <ion-textarea [(ngModel)]="userComment" name="comment" class="comment-textarea"
+                    placeholder="Add a comment..." [autoGrow]="true" (keydown)="onTextareaKeyDown($event)"
+                    aria-label="Enter your comment on the post here">
+                </ion-textarea>
+                <ion-button slot="end" type="submit" [disabled]="submittingComment" class="comment-button">
+                    <ng-container *ngIf="!submittingComment; else loadingTemplate">
+                        Post
+                    </ng-container>
+                    <ng-template #loadingTemplate>
+                        <ion-spinner name="lines"></ion-spinner>
+                    </ng-template>
+                </ion-button>
+            </ion-item>
+        </form>
+    </div>
+</ion-content>

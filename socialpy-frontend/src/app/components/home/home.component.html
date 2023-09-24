@@ -1,4 +1,4 @@
-<ion-content [scrollEvents]="true">
+<ion-content>
     <!-- Display Loading page while waiting to retrieve user feed data -->
     <ng-container *ngIf="!initialLoadComplete">
         <app-loading-page></app-loading-page>
@@ -45,7 +45,7 @@
                                 <fa-icon [icon]="isPostLiked(feedPost.id) ? faHeartSolid : faHeart" size="xl"
                                     [ngClass]="{'liked-heart': isPostLiked(feedPost.id)}"></fa-icon>
                             </div>
-                            <div class="comment-button">
+                            <div class="comment-button" (click)="openCommentsModal(feedPost.id)">
                                 <fa-icon [icon]="faComment" size="xl"></fa-icon>
                             </div>
                         </div>
@@ -67,8 +67,8 @@
                                 </a>
                             </div>
                         </ion-card-content>
-                        <div class="view-comments">
-                            View {{ feedPost.comment_count }} comments
+                        <div class="view-comments" (click)="openCommentsModal(feedPost.id)">
+                            View comments
                         </div>
                     </ion-card>
                 </ion-col>

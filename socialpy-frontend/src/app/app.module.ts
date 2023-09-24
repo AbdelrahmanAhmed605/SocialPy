@@ -8,7 +8,7 @@ import { AppRoutingModule } from './app-routing.module';
 
 import { StoreModule } from '@ngrx/store';
 import { EffectsModule } from '@ngrx/effects';
-import { reducers } from './store/app.state'; 
+import { reducers } from './store/app.state';
 
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
@@ -19,6 +19,7 @@ import { AuthService } from 'src/utilities/auth';
 import { UserService } from './api-services/user/user.service';
 import { PostService } from './api-services/post/post.service';
 import { FollowService } from './api-services/follow/follow.service';
+import { CommentService } from './api-services/comment/comment.service';
 
 import { AppComponent } from './app.component';
 import { HomeComponent } from './components/home/home.component';
@@ -28,6 +29,7 @@ import { UserProfileComponent } from './components/user-profile/user-profile.com
 import { ErrorPageComponent } from './components/error-page/error-page.component';
 import { LoadingPageComponent } from './components/loading-page/loading-page.component';
 import { PostLikersModalComponent } from './components/post-likers-modal/post-likers-modal.component';
+import { PostCommentsModalComponent } from './components/post-comments-modal/post-comments-modal.component';
 
 import { UserFeedEffects } from './store/user-feed/user-feed.effects';
 import { PostActionsEffects } from './store/post-actions/post-actions.effects';
@@ -43,6 +45,7 @@ import { AppThemeEffects } from './store/app-theme/app-theme.effects';
     ErrorPageComponent,
     LoadingPageComponent,
     PostLikersModalComponent,
+    PostCommentsModalComponent,
   ],
   imports: [
     HttpClientModule,
@@ -63,7 +66,13 @@ import { AppThemeEffects } from './store/app-theme/app-theme.effects';
       AppThemeEffects,
     ]),
   ],
-  providers: [AuthService, UserService, PostService, FollowService],
+  providers: [
+    AuthService,
+    UserService,
+    PostService,
+    FollowService,
+    CommentService,
+  ],
   bootstrap: [AppComponent],
 })
 export class AppModule {}
