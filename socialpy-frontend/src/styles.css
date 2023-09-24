@@ -24,12 +24,18 @@ body {
 .delete-comment-alert .alert-button-group {
   flex-direction: column;
   align-items: center;
+  padding: 0 !important;
 }
 
 /* Make the buttons within the alert take up the entire width of the alert*/
-.delete-comment-alert .alert-button-group button {
+.delete-comment-alert .alert-button-group .alert-button {
   width: 100%;
-  text-align: center;
+  margin: 0 !important;
+}
+
+/* Center the text within the alert buttons*/
+.delete-comment-alert .alert-button-group .alert-button-inner {
+  justify-content: center;
 }
 
 /* Since the alert is used to only display buttons, remove designated space for alert headers and alert messages*/
