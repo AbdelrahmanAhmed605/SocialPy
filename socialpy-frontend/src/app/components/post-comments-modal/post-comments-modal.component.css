@@ -3,12 +3,9 @@ ion-content::part(scroll) {
   overscroll-behavior-y: contain;
 }
 
-.comments-list {
-  padding: 8px;
-}
-
-.comment-item {
-  padding: 2px 0;
+/* Apply a background to hovered items so the user can see which ion-item/comment they are hovering over*/
+.comment-item:hover ion-item {
+  --background: var(--ion-color-light-shade);
 }
 
 ion-title {
@@ -43,6 +40,7 @@ ion-avatar fa-icon {
 .comment-user-info {
   display: flex;
   align-items: center;
+  margin-bottom: 5px;
 }
 
 .user-username {
@@ -59,10 +57,25 @@ ion-avatar fa-icon {
   padding-left: 4px;
 }
 
+/* Set the element which opens the alert to display none, the element will only be displayed when its 
+corresponding ion-item is hovered over*/
+.comment-actions-alert {
+  display: none;
+  margin-left: auto;
+  font-weight: bolder;
+  cursor: pointer;
+}
+.comment-item:hover .comment-actions-alert {
+  display: inline-block;
+}
+
+/* Allows comment text to wrap to a new line according to the containers width*/
 .comment-content {
   white-space: normal;
 }
 
+/* Places the form at the bottom of the commponet and position sticky allows it to always be visible as the 
+user scrolls through the comments*/
 .comment-form {
   position: sticky;
   width: 100%;
@@ -90,4 +103,9 @@ ion-button.comment-button {
 
 ion-button.comment-button:hover {
   --background: transparent;
+}
+
+/* Add spacing around the delete fa-icon inside the ionic sliding option*/
+.sliding-delete-comment {
+  padding: 0 5px;
 }

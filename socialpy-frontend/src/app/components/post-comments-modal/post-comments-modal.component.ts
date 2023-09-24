@@ -4,9 +4,17 @@ import {
   ModalController,
   InfiniteScrollCustomEvent,
   IonContent,
+  AlertController,
+  Platform,
 } from '@ionic/angular';
 
-import { faUser, faXmark, faCircle } from '@fortawesome/free-solid-svg-icons';
+import {
+  faUser,
+  faXmark,
+  faCircle,
+  faEllipsis,
+  faTrash,
+} from '@fortawesome/free-solid-svg-icons';
 
 import { PostCommentsResponse } from 'src/app/interface-types/post-comments.model';
 import { CommentService } from 'src/app/api-services/comment/comment.service';
@@ -19,13 +27,18 @@ import timeAgoFromString from 'src/utilities/dateTime';
   styleUrls: ['./post-comments-modal.component.css'],
 })
 export class PostCommentsModalComponent implements OnInit {
+  // Input decorator to accept 'postId' from the parent component that calls this component
   @Input() postId!: number;
+  // ViewChild decorator to get a reference to the IonContent element in the html
+  // This allows us to programmatically control the IonContent element (such as using its scrolling methods)
   @ViewChild(IonContent) content!: IonContent;
 
   constructor(
-    private router: Router,
-    private commentService: CommentService,
-    private modalCtrl: ModalController
+    private router: Router, // Router service for routing functionality
+    private commentService: CommentService, // Service for API calls
+    private modalCtrl: ModalController, // for displaying modals
+    private alertController: AlertController, // for displaying alerts
+    private platform: Platform // for platform-specific functionality such as determining the width of the device viewing this component
   ) {}
 
   // Contains a list of comments for a post
@@ -40,6 +53,8 @@ export class PostCommentsModalComponent implements OnInit {
   faXmark = faXmark;
   faUser = faUser;
   faCircle = faCircle;
+  faEllipsis = faEllipsis;
+  faTrash = faTrash;
 
   ngOnInit() {
     // Fetch the list of likers when the modal component is initialized
@@ -120,7 +135,7 @@ export class PostCommentsModalComponent implements OnInit {
 
         // Add the new comment to the comments array
         this.comments.unshift(newCommentData);
-        
+
         // Enable the submit button after successful submission
         this.submittingComment = false;
 
@@ -137,6 +152,57 @@ export class PostCommentsModalComponent implements OnInit {
         this.submittingComment = false;
       },
     });
+  }
+
+  // Check if the screen width is greater than 768px
+  isLargeScreen(): boolean {
+    return this.platform.width() > 768;
+  }
+
+  // Function to delete a comment with a specified commentId
+  async deleteComment(commentId: number) {
+    // Call the commentService to delete the comment
+    this.commentService.deleteComment(commentId).subscribe({
+      next: () => {
+        // After comment is deleted successfully, remove it from the comments state array
+        const index = this.comments.findIndex(
+          (comment) => comment.id === commentId
+        );
+        if (index !== -1) {
+          this.comments.splice(index, 1);
+        }
+      },
+      error: (error) => {
+        console.error('Error deleting comment:', error);
+      },
+    });
+  }
+
+  // Open an ionic alert displaying buttons of actions to perform on a specific comment by passing the commentId
+  async openCommentActionsAlert(commentId: number) {
+    const alert = await this.alertController.create({
+      cssClass: 'delete-comment-alert',
+      buttons: [
+        // Delete button to delete the comment associated with the alert
+        {
+          text: 'Delete',
+          cssClass: 'delete-button',
+          handler: () => {
+            this.deleteComment(commentId);
+          },
+        },
+        // Cancel button to close the alert
+        {
+          text: 'Cancel',
+          cssClass: 'cancel-button',
+          handler: () => {
+            alert.dismiss();
+          },
+        },
+      ],
+    });
+
+    await alert.present();
   }
 
   // Function to close the modal display

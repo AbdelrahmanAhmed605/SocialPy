@@ -13,3 +13,37 @@ body {
   margin: 0;
   font-family: Roboto, "Helvetica Neue", sans-serif;
 }
+
+/* Custome styles for the ionic alert in the PostCommentsModal Component must be placed in a global stylesheet*/
+
+.delete-comment-alert .alert-wrapper {
+  background-color: var(--ion-color-light-tint);
+}
+
+/* Place each button in the alert stacked vertically*/
+.delete-comment-alert .alert-button-group {
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Make the buttons within the alert take up the entire width of the alert*/
+.delete-comment-alert .alert-button-group button {
+  width: 100%;
+  text-align: center;
+}
+
+/* Since the alert is used to only display buttons, remove designated space for alert headers and alert messages*/
+.delete-comment-alert .alert-head {
+  padding: 0 !important;
+}
+.delete-comment-alert .alert-message {
+  padding: 0 !important;
+}
+
+/* Change the colors of the buttons inside the alert*/
+.delete-comment-alert .delete-button {
+  color: var(--ion-color-danger);
+}
+.delete-comment-alert .cancel-button {
+  color: var(--ion-color-dark);
+}
