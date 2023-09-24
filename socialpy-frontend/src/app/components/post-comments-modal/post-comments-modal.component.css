@@ -7,7 +7,7 @@ ion-content::part(scroll) {
   padding: 8px;
 }
 
-ion-item {
+.comment-item {
   padding: 2px 0;
 }
 
