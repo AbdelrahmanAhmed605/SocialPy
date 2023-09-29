@@ -51,7 +51,7 @@ export class ErrorPageComponent implements OnInit {
       this.router.navigate(['/login']);
     } else {
       // Redirect to the home page for other errors
-      this.router.navigate(['/home']);
+      this.router.navigate(['/']);
     }
   }
 }

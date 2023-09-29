@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, ViewChild } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   ModalController,
@@ -7,6 +7,9 @@ import {
   AlertController,
   Platform,
 } from '@ionic/angular';
+
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 import {
   faUser,
@@ -26,7 +29,7 @@ import timeAgoFromString from 'src/utilities/dateTime';
   templateUrl: './post-comments-modal.component.html',
   styleUrls: ['./post-comments-modal.component.css'],
 })
-export class PostCommentsModalComponent implements OnInit {
+export class PostCommentsModalComponent implements OnInit, OnDestroy {
   // Input decorator to accept 'postId' from the parent component that calls this component
   @Input() postId!: number;
   // ViewChild decorator to get a reference to the IonContent element in the html
@@ -49,6 +52,8 @@ export class PostCommentsModalComponent implements OnInit {
   userComment: string = ''; // Variable to store the user's new comment they are submitting
   submittingComment: boolean = false; // Keeps track if a comment is currently being submitted by the user
 
+  private destroyed$ = new Subject<void>(); // Subject to track component destruction for subscription cleanup
+
   // Font Awesome icons
   faXmark = faXmark;
   faUser = faUser;
@@ -65,6 +70,7 @@ export class PostCommentsModalComponent implements OnInit {
   async fetchComments() {
     this.commentService
       .getPostComments(this.postId, this.currentCommentsPage)
+      .pipe(takeUntil(this.destroyed$))
       .subscribe({
         next: (data: PostCommentsResponse) => {
           this.hasMoreCommentsData = !!data.next; // Check if there is more paginated data
@@ -126,32 +132,35 @@ export class PostCommentsModalComponent implements OnInit {
     this.submittingComment = true;
 
     // Call the createComment service to post the comment
-    this.commentService.createComment(this.postId, this.userComment).subscribe({
-      next: (newCommentData) => {
-        // add field to indicate when comment was made relative to current time
-        newCommentData.formattedTimeAgo = timeAgoFromString(
-          newCommentData.created_at
-        );
+    this.commentService
+      .createComment(this.postId, this.userComment)
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe({
+        next: (newCommentData) => {
+          // add field to indicate when comment was made relative to current time
+          newCommentData.formattedTimeAgo = timeAgoFromString(
+            newCommentData.created_at
+          );
 
-        // Add the new comment to the comments array
-        this.comments.unshift(newCommentData);
+          // Add the new comment to the comments array
+          this.comments.unshift(newCommentData);
 
-        // Enable the submit button after successful submission
-        this.submittingComment = false;
+          // Enable the submit button after successful submission
+          this.submittingComment = false;
 
-        // Scroll to the top so the user can see their new comment
-        this.scrollToTop();
+          // Scroll to the top so the user can see their new comment
+          this.scrollToTop();
 
-        // Clear the comment input field
-        this.userComment = '';
-      },
-      error: (error) => {
-        console.error('Error fetching comments:', error);
+          // Clear the comment input field
+          this.userComment = '';
+        },
+        error: (error) => {
+          console.error('Error fetching comments:', error);
 
-        // Enable the submit button in case of an error
-        this.submittingComment = false;
-      },
-    });
+          // Enable the submit button in case of an error
+          this.submittingComment = false;
+        },
+      });
   }
 
   // Check if the screen width is greater than 768px
@@ -162,20 +171,23 @@ export class PostCommentsModalComponent implements OnInit {
   // Function to delete a comment with a specified commentId
   async deleteComment(commentId: number) {
     // Call the commentService to delete the comment
-    this.commentService.deleteComment(commentId).subscribe({
-      next: () => {
-        // After comment is deleted successfully, remove it from the comments state array
-        const index = this.comments.findIndex(
-          (comment) => comment.id === commentId
-        );
-        if (index !== -1) {
-          this.comments.splice(index, 1);
-        }
-      },
-      error: (error) => {
-        console.error('Error deleting comment:', error);
-      },
-    });
+    this.commentService
+      .deleteComment(commentId)
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe({
+        next: () => {
+          // After comment is deleted successfully, remove it from the comments state array
+          const index = this.comments.findIndex(
+            (comment) => comment.id === commentId
+          );
+          if (index !== -1) {
+            this.comments.splice(index, 1);
+          }
+        },
+        error: (error) => {
+          console.error('Error deleting comment:', error);
+        },
+      });
   }
 
   // Open an ionic alert displaying buttons of actions to perform on a specific comment by passing the commentId
@@ -214,5 +226,11 @@ export class PostCommentsModalComponent implements OnInit {
   goToUserProfilePage(userId: string) {
     this.closeModal();
     this.router.navigate(['/profile', userId]);
+  }
+
+  ngOnDestroy(): void {
+    // Complete the `destroyed$` Subject to signal unsubscription to any ongoing observables
+    this.destroyed$.next();
+    this.destroyed$.complete();
   }
 }

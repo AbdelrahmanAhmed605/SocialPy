@@ -1,10 +1,13 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   InfiniteScrollCustomEvent,
   ModalController,
   ToastController,
 } from '@ionic/angular';
+
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 import { PostLikersResponse } from 'src/app/interface-types/post-likers.model';
 
@@ -18,8 +21,8 @@ import { faUser, faXmark } from '@fortawesome/free-solid-svg-icons';
   templateUrl: './post-likers-modal.component.html',
   styleUrls: ['./post-likers-modal.component.css'],
 })
-export class PostLikersModalComponent implements OnInit {
-  @Input() postId!: number;
+export class PostLikersModalComponent implements OnInit, OnDestroy {
+  @Input() postId!: number; // Input property to receive the ID of the post from the parent component
   constructor(
     private router: Router,
     private postService: PostService,
@@ -32,6 +35,8 @@ export class PostLikersModalComponent implements OnInit {
   likers: any[] = [];
   currentUserLikersPage = 1; // keep track of the current page of user likers (for pagination)
   hasMoreUserLikersData: boolean = false; // Keeps track if there is more paginated data
+
+  private destroyed$ = new Subject<void>(); // Subject to track component destruction for subscription cleanup
 
   // Font Awesome icons
   faXmark = faXmark;
@@ -46,6 +51,7 @@ export class PostLikersModalComponent implements OnInit {
   async fetchLikers() {
     this.postService
       .postLikersList(this.postId, this.currentUserLikersPage)
+      .pipe(takeUntil(this.destroyed$))
       .subscribe({
         next: (data: PostLikersResponse) => {
           this.hasMoreUserLikersData = !!data.next; // Check if there is more paginated data
@@ -75,32 +81,35 @@ export class PostLikersModalComponent implements OnInit {
   // Function to follow a user with a specified id
   followUser(userId: number) {
     // Call the service API function to follow the user
-    this.followService.followUser(userId).subscribe({
-      next: (response) => {
-        if (response && response.follow_status) {
-          // Find the index of the user in the likers array
-          const userIndex = this.likers.findIndex(
-            (liker) => liker.id === userId
-          );
-          if (userIndex !== -1) {
-            // Update the requesting_user_follow_status based on the API response to update the UI
-            this.likers[userIndex].requesting_user_follow_status =
-              response.follow_status;
-          } else {
-            console.error(
-              'An error occurred while processing your request. Please try again later.'
+    this.followService
+      .followUser(userId)
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe({
+        next: (response) => {
+          if (response && response.follow_status) {
+            // Find the index of the user in the likers array
+            const userIndex = this.likers.findIndex(
+              (liker) => liker.id === userId
             );
-            // Display a toast message to alert the user an error occured
-            this.followUserErrorToast();
+            if (userIndex !== -1) {
+              // Update the requesting_user_follow_status based on the API response to update the UI
+              this.likers[userIndex].requesting_user_follow_status =
+                response.follow_status;
+            } else {
+              console.error(
+                'An error occurred while processing your request. Please try again later.'
+              );
+              // Display a toast message to alert the user an error occured
+              this.followUserErrorToast();
+            }
           }
-        }
-      },
-      error: (error) => {
-        console.error('Error following user:', error);
-        // Display a toast message to alert the user an error occured
-        this.followUserErrorToast();
-      },
-    });
+        },
+        error: (error) => {
+          console.error('Error following user:', error);
+          // Display a toast message to alert the user an error occured
+          this.followUserErrorToast();
+        },
+      });
   }
 
   // Display an error ionic toast at the top of the page to alert the user if an error occured following a user
@@ -117,32 +126,35 @@ export class PostLikersModalComponent implements OnInit {
   // Function to unfollow a user with a specified id
   unfollowUser(userId: number) {
     // Call the service API function to unfollow the user
-    this.followService.unfollowUser(userId).subscribe({
-      next: (response) => {
-        if (response) {
-          // Find the index of the user in the likers array
-          const userIndex = this.likers.findIndex(
-            (liker) => liker.id === userId
-          );
-          if (userIndex !== -1) {
-            // Update the requesting_user_follow_status based on the API response to update the UI
-            this.likers[userIndex].requesting_user_follow_status =
-              response.follow_status;
-          } else {
-            console.error(
-              'An error occurred while processing your request. Please try again later.'
+    this.followService
+      .unfollowUser(userId)
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe({
+        next: (response) => {
+          if (response) {
+            // Find the index of the user in the likers array
+            const userIndex = this.likers.findIndex(
+              (liker) => liker.id === userId
             );
-            // Display a toast message to alert the user an error occured
-            this.unfollowUserErrorToast();
+            if (userIndex !== -1) {
+              // Update the requesting_user_follow_status based on the API response to update the UI
+              this.likers[userIndex].requesting_user_follow_status =
+                response.follow_status;
+            } else {
+              console.error(
+                'An error occurred while processing your request. Please try again later.'
+              );
+              // Display a toast message to alert the user an error occured
+              this.unfollowUserErrorToast();
+            }
           }
-        }
-      },
-      error: (error) => {
-        console.error('Error unfollowing user:', error);
-        // Display a toast message to alert the user an error occured
-        this.unfollowUserErrorToast();
-      },
-    });
+        },
+        error: (error) => {
+          console.error('Error unfollowing user:', error);
+          // Display a toast message to alert the user an error occured
+          this.unfollowUserErrorToast();
+        },
+      });
   }
 
   // Display an error ionic toast at the top of the page to alert the user if an error occured unfollowing a user
@@ -165,5 +177,11 @@ export class PostLikersModalComponent implements OnInit {
   goToUserProfilePage(userId: string) {
     this.closeModal();
     this.router.navigate(['/profile', userId]);
+  }
+
+  ngOnDestroy(): void {
+    // Complete the `destroyed$` Subject to signal unsubscription to any ongoing observables
+    this.destroyed$.next();
+    this.destroyed$.complete();
   }
 }
