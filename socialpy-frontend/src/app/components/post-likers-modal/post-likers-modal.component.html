@@ -22,11 +22,12 @@
             <ion-label (click)="goToUserProfilePage(liker.id)" class="user-username">
                 {{ liker.username}}
             </ion-label>
-            <!-- Button to show "Follow" for users the requesting user is not following -->
+            <!-- Button showing "Follow" to allow us to followe the user if we are not following them -->
             <ion-button *ngIf="liker.requesting_user_follow_status === false" (click)="followUser(liker.id)">
                 Follow
             </ion-button>
-            <!-- Button to show "Following" or "Requested" baed on the requesting user's follow status -->
+            <!-- Button showing "Following" or "Requested" based on our current follow status
+                and allows us to unfollow them when clicked -->
             <ion-button (click)="unfollowUser(liker.id)" [ngStyle]="{'--background':'var(--ion-color-medium-shade)'}"
                 *ngIf="liker.requesting_user_follow_status === 'accepted' || liker.requesting_user_follow_status === 'pending'">
                 {{ liker.requesting_user_follow_status === 'accepted' ? 'Following' : 'Requested' }}
