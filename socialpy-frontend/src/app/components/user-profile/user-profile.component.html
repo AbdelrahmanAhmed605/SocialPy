@@ -1,1 +1,103 @@
-<p>user-profile works!</p>
+<ion-content>
+    <!-- Error during retrieval of user profile data -->
+    <ng-container *ngIf="userDataError">
+        <app-error-page [error]="userDataError"></app-error-page>
+    </ng-container>
+
+    <div *ngIf="userData" class="profile-page-container">
+        <div class="profile-page">
+            <div class="profile-info-container">
+                <!-- User Profile Picture -->
+                <div class="profile-picture-container">
+                    <div class="profile-picture">
+                        <ng-container *ngIf="userData.profile_picture">
+                            <img [src]="userData.profile_picture" alt="Profile Picture" />
+                        </ng-container>
+                        <ng-container *ngIf="!userData.profile_picture">
+                            <fa-icon [icon]="faUser"></fa-icon>
+                        </ng-container>
+                    </div>
+                </div>
+                <!-- User Profile Info -->
+                <div class="profile-info">
+                    <div class="profile-username-and-actions">
+                        <!-- Profile Username -->
+                        <div class="profile-username">
+                            {{ userData.username }}
+                        </div>
+                        <!-- Contains buttons to perform actions to the user -->
+                        <div class="profile-actions">
+                            <!-- Button showing "Follow" to allow us to followe the user if we are not following them -->
+                            <ion-button class="profile-action" *ngIf="userData.follow_status === false"
+                                (click)="followUser(userId)">
+                                Follow
+                            </ion-button>
+                            <!-- Button showing "Following" or "Requested" based on our current follow status
+                                and allows us to unfollow them when clicked -->
+                            <ion-button class="profile-action" (click)="unfollowUser(userId)"
+                                [ngStyle]="{'--background':'var(--ion-color-medium-shade)'}"
+                                *ngIf="userData.follow_status === 'accepted' || userData.follow_status === 'pending'">
+                                {{ userData.follow_status === 'accepted' ? 'Following' : 'Requested' }}
+                            </ion-button>
+                            <ion-button class="profile-action"
+                                [ngStyle]="{'--background':'var(--ion-color-medium-shade)'}">
+                                Message
+                            </ion-button>
+                        </div>
+                    </div>
+                    <!-- Profile Stats for Large Screen -->
+                    <div *ngIf="isLargeScreen" class="profile-stats">
+                        <ul class="profile-stat-list">
+                            <li>
+                                <span class="profile-stat-number">{{ userData.num_posts }}</span>Posts
+                            </li>
+                            <li>
+                                <span class="profile-stat-number">{{ userData.num_followers }}</span>Followers
+                            </li>
+                            <li>
+                                <span class="profile-stat-number">{{ userData.num_following }}</span>Following
+                            </li>
+                        </ul>
+                    </div>
+                    <div *ngIf="userData.bio" class="profile-bio">
+                        <p>{{userData.bio}}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="profile-content">
+                <!-- Profile Stats for Small Screen -->
+                <div *ngIf="!isLargeScreen" class="profile-stats">
+                    <ul class="profile-stat-list">
+                        <li>
+                            <span class="profile-stat-number">{{ userData.num_posts }}</span>
+                            <span class="profile-stat-category"> Posts</span>
+                        </li>
+                        <li>
+                            <span class="profile-stat-number">{{ userData.num_followers }}</span>
+                            <span class="profile-stat-category"> Followers</span>
+                        </li>
+                        <li>
+                            <span class="profile-stat-number">{{ userData.num_following }}</span>
+                            <span class="profile-stat-category"> Following</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="profile-tablist">
+                    <div class="profile-tab" [ngClass]="{'selected': isSelectedTab === 'posts'}"
+                        (click)="selectTab('posts')">
+                        <fa-icon [icon]="faTableCells"></fa-icon>
+                        <span class="profile-tab-text"> POSTS</span>
+                    </div>
+                </div>
+                <!-- User Posts -->
+                <div class="user-posts-container">
+                    <ng-container *ngFor="let post of userData.posts">
+                        <div class="single-post-container">
+                            <img class="user-post-image" [src]="post.media" />
+                        </div>
+                    </ng-container>
+                </div>
+            </div>
+        </div>
+    </div>
+</ion-content>
