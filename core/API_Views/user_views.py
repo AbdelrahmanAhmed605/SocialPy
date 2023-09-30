@@ -235,8 +235,16 @@ def user_profile(request, user_id):
 
             serializer = PostSerializerMinimal(page, many=True, context={'request': request})
 
+            # Get the pagination data for user posts
+            pagination_data = {
+                'next': paginator.get_next_link(), # Get the link for the next page of posts
+                'previous': paginator.get_previous_link(), # Get the link for the previous page of posts
+            }
+
             # Update the 'posts' field in response_data with serialized data
             response_data['posts'] = serializer.data
+            # Add the posts pagination data to the response data
+            response_data['pagination'] = pagination_data
         except DatabaseError as e:
             # Handle database-related errors
             return Response({"error": f"Database error: {str(e)}"},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
