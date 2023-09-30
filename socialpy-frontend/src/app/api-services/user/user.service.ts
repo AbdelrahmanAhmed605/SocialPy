@@ -63,8 +63,8 @@ request's returned Observable structure. SwitchMap also preserves the token valu
   }
 
   // Get a users profile (user information and posts)
-  getUserProfile(userId: number): Observable<any> {
-    const userProfileEndpoint = `user/profile/${userId}`;
+  getUserProfile(userId: number, page: number): Observable<any> {
+    const userProfileEndpoint = `user/profile/${userId}/?page=${page}`;
 
     return this.authService.handleAuthenticationToken().pipe(
       switchMap((token) => {

@@ -97,6 +97,9 @@
                         </div>
                     </ng-container>
                 </div>
+                <ion-infinite-scroll [disabled]="!hasMoreUserProfilePosts" (ionInfinite)="loadMoreProfilePosts($event)">
+                    <ion-infinite-scroll-content loadingText="Loading..." loadingSpinner="bubbles"></ion-infinite-scroll-content>
+                </ion-infinite-scroll>
             </div>
         </div>
     </div>

@@ -9,4 +9,8 @@ export interface UserProfileResponse {
   posts: Array<{ id: number; media: string }>;
   profile_picture: string | null;
   username: string;
+  pagination: {
+    next: string | null;
+    previous: string | null;
+  };
 }

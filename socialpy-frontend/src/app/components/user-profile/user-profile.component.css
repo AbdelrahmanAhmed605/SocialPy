@@ -37,14 +37,15 @@ ion-content {
   --user-posts-container-vert-margin: 20px;
 }
 
-.profile-page-container{
+.profile-page-container {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
 .profile-page {
-  margin: var(--profile-page-vert-margin-large) var(--profile-page-hor-margin-large);
+  margin: var(--profile-page-vert-margin-large)
+    var(--profile-page-hor-margin-large);
   padding: var(--profile-page-vert-padding-large)
     var(--profile-page-hor-padding-large);
 }
@@ -82,6 +83,7 @@ ion-content {
   justify-content: center;
   background-color: rgb(204, 204, 204);
   cursor: pointer;
+  overflow: hidden;
 }
 
 .profile-picture img {

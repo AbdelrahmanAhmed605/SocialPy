@@ -1,6 +1,10 @@
 import { Component, OnInit, HostListener, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { ToastController, Platform } from '@ionic/angular';
+import {
+  ToastController,
+  Platform,
+  InfiniteScrollCustomEvent,
+} from '@ionic/angular';
 
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -38,8 +42,12 @@ export class UserProfileComponent implements OnInit, OnDestroy {
   isSelectedTab: string = 'posts'; // checks which tab in the tablist is currently selected. The default is "posts"
 
   userId!: number; // Contains the id of the user being viewed in the component
-  userData!: UserProfileResponse; // Contains the user's profile data
+  userData: UserProfileResponse | undefined; // Contains the user's profile data
+
   userDataError: any = null; // Tracks if any errors occur while fetching user profile data
+
+  currentUserProfilePostsPage = 1; // keep track of the current page of user's profile posts (for pagination)
+  hasMoreUserProfilePosts: boolean = false; // Keeps track if there is more paginated profile posts
 
   private destroyed$ = new Subject<void>(); // Subject to track component destruction for subscription cleanup
 
@@ -68,19 +76,44 @@ export class UserProfileComponent implements OnInit, OnDestroy {
     this.isLargeScreen = this.platform.width() > 736;
   }
 
-  // Call the service api function to retrieve the list of users who liked a post
+  // Call the service api function to retrieve user's profile data
   async fetchUser(userId: number) {
     this.userService
-      .getUserProfile(userId)
+      .getUserProfile(userId, this.currentUserProfilePostsPage)
       .pipe(takeUntil(this.destroyed$))
       .subscribe({
         next: (data: UserProfileResponse) => {
-          this.userData = data;
+          if (this.userData === undefined) {
+            this.hasMoreUserProfilePosts = !!data.pagination.next; // Check if there is more paginated data
+            this.userData = data;
+          } else {
+            this.hasMoreUserProfilePosts = !!data.pagination.next; // Check if there is more paginated data
+            // Append new results to existing posts
+            this.userData.posts = [
+              ...(this.userData.posts || []),
+              ...data.posts,
+            ];
+          }
         },
         error: (error) => {
           this.userDataError = error;
         },
       });
+  }
+
+  // Function to load more paginated user profile posts for the Ionic infinite scroll component
+  loadMoreProfilePosts(event: Event) {
+    // Increment the current page of paginated user posts data
+    this.currentUserProfilePostsPage++;
+
+    // Call the service api with the updated page parameter
+    this.fetchUser(this.userId);
+
+    setTimeout(() => {
+      // Complete the infinite scroll event to indicate that loading is done
+      (event as InfiniteScrollCustomEvent).target.complete();
+      // Scroll back to the previous position
+    }, 500);
   }
 
   // Function to follow a user with a specified id
@@ -91,7 +124,11 @@ export class UserProfileComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroyed$))
       .subscribe({
         next: (response) => {
-          if (response && response.follow_status) {
+          if (
+            response &&
+            response.follow_status &&
+            this.userData !== undefined
+          ) {
             // update the follow status property in the userData state
             this.userData.follow_status = response.follow_status;
           } else {
@@ -129,7 +166,7 @@ export class UserProfileComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroyed$))
       .subscribe({
         next: (response) => {
-          if (response) {
+          if (response && this.userData !== undefined) {
             // update the follow status property in the userData state
             this.userData.follow_status = response.follow_status;
           } else {
