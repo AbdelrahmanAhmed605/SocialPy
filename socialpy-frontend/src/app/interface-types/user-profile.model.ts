@@ -6,7 +6,12 @@ export interface UserProfileResponse {
   num_followers: number;
   num_following: number;
   num_posts: number;
-  posts: Array<{ id: number; media: string }>;
+  posts: Array<{
+    id: number;
+    media: string;
+    like_count: number;
+    comment_count: number;
+  }>;
   profile_picture: string | null;
   username: string;
   pagination: {

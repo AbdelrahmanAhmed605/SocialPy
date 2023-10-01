@@ -14,7 +14,12 @@ import { FollowService } from 'src/app/api-services/follow/follow.service';
 
 import { UserProfileResponse } from 'src/app/interface-types/user-profile.model';
 
-import { faUser, faTableCells } from '@fortawesome/free-solid-svg-icons';
+import {
+  faUser,
+  faTableCells,
+  faHeart,
+  faComment,
+} from '@fortawesome/free-solid-svg-icons';
 
 @Component({
   selector: 'app-user-profile',
@@ -36,6 +41,8 @@ export class UserProfileComponent implements OnInit, OnDestroy {
   // Font Awesome icons
   faUser = faUser;
   faTableCells = faTableCells;
+  faHeart = faHeart;
+  faComment = faComment;
 
   isLargeScreen!: boolean; // determines if the width of the device is large or small
 
