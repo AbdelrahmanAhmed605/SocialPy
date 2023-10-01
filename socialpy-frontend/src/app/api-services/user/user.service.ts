@@ -61,4 +61,27 @@ request's returned Observable structure. SwitchMap also preserves the token valu
       })
     );
   }
+
+  // Get a users profile (user information and posts)
+  getUserProfile(userId: number, page: number): Observable<any> {
+    const userProfileEndpoint = `user/profile/${userId}/?page=${page}`;
+
+    return this.authService.handleAuthenticationToken().pipe(
+      switchMap((token) => {
+        // Set the headers with the Authorization token returned from handleAuthenticationToken
+        const headers = new HttpHeaders({
+          Authorization: `Token ${token}`,
+        });
+
+        return this.http.get(`${API_BASE_URL}/${userProfileEndpoint}`, {
+          headers,
+          withCredentials: true,
+        });
+      }),
+      catchError((error) => {
+        // throw the error
+        return throwError(() => error);
+      })
+    );
+  }
 }

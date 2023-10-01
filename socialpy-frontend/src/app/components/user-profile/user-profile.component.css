@@ -1,0 +1,305 @@
+ion-content {
+  --profile-page-vert-padding-large: 30px;
+  --profile-page-hor-padding-large: 20px;
+  --profile-page-vert-margin-large: 0px;
+  --profile-page-hor-margin-large: 8%;
+  --profile-page-vert-margin-small: 0px;
+  --profile-page-hor-margin-small: 0px;
+
+  --profile-info-container-vert-margin: 40px;
+  --profile-info-container-left-margin-small: 15px;
+
+  --profile-picture-dimensions-large: 180px;
+  --profile-picture-dimensions-small: 75px;
+  --profile-picture-margin-right-large: 30px;
+  --profile-picture-margin-left-large: 20px;
+  --profile-picture-margin-right-small: 10px;
+  --profile-picture-margin-left-small: 15px;
+
+  --profile-username-hor-margin: 50px;
+
+  --profile-actions-vert-margin-small: 15px;
+  --profile-actions--buttons-hor-margin-large: 12px;
+  --profile-actions--buttons-hor-margin-small: 8px;
+
+  --profile-stats-vert-margin-large: 30px;
+  --profile-stats-vert-margin-small: 15px;
+  --profile-stat-margin-large: 0px 40px;
+  --profile-stat-margin-small: 0px;
+  --profile-stat-padding-small: 12px 0px;
+
+  --profile-bio-vert-margin-large: 20px;
+
+  --profile-tablist-vert-margin-large: 40px;
+  --profile-tablist-vert-margin-small: 0px;
+  --profile-tab-padding: 10px 0px;
+
+  --user-posts-container-vert-margin: 20px;
+}
+
+.profile-page-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.profile-page {
+  margin: var(--profile-page-vert-margin-large)
+    var(--profile-page-hor-margin-large);
+  padding: var(--profile-page-vert-padding-large)
+    var(--profile-page-hor-padding-large);
+}
+
+.profile-page {
+  max-width: 935px; /* When device width gets large, the content will have a width of 935px and only the spacing around it will grow*/
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.profile-info-container {
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  align-items: stretch; /* Ensure children stretch to the same height */
+  margin-top: var(--profile-info-container-vert-margin);
+}
+
+.profile-picture-container {
+  margin-right: var(--profile-picture-margin-right-large);
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  border-radius: 50%;
+}
+
+.profile-picture {
+  max-width: 150px;
+  border-radius: 50%;
+  width: 100%; /* Take up 100% of the container */
+  aspect-ratio: 1/1; /* Ensure the profile picture has the same width and height*/
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgb(204, 204, 204);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.profile-picture img {
+  border-radius: 50%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-picture fa-icon {
+  width: 100%;
+  height: 100%;
+  color: white;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+/* Adjust the size of the svg image within the fa-icon  */
+.profile-picture fa-icon ::ng-deep svg {
+  width: 80%;
+  height: 80%;
+}
+
+.profile-info {
+  flex: 2; /* Profile info container grows twice as much as other children*/
+}
+
+.profile-username-and-actions {
+  display: inline-flex;
+  align-items: center;
+}
+
+.profile-username {
+  font-size: 1.5rem;
+  font-weight: 400;
+  margin-right: var(--profile-username-hor-margin);
+}
+
+.profile-action {
+  margin-right: var(--profile-actions--buttons-hor-margin-large);
+}
+
+/* Profile Stats */
+.profile-stats {
+  margin-top: var(--profile-stats-vert-margin-large);
+}
+
+.profile-stat-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+}
+
+.profile-stat-list li {
+  display: flex;
+  text-align: center;
+  margin: var(--profile-stat-margin-large);
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+/* Remove left margin for the first profile stat */
+.profile-stat-list li:first-child {
+  margin-left: 0;
+}
+
+/* Styles for numbers associated with stat categories (ex: the "8" in "8 posts")*/
+.profile-stat-number {
+  margin-right: 5px;
+  font-weight: 600;
+}
+
+.profile-bio {
+  margin-top: var(--profile-bio-vert-margin-large);
+}
+
+.profile-tablist {
+  width: 100%;
+  margin-top: var(--profile-tablist-vert-margin-large);
+  display: flex;
+  justify-content: space-evenly;
+  border-top: solid 0.5px var(--ion-color-medium);
+}
+
+.profile-tab {
+  text-align: center;
+  width: fit-content;
+  border-top: solid 1px var(--ion-color-light-contrast);
+  padding: var(--profile-tab-padding);
+}
+
+.profile-tab fa-icon {
+  font-size: 15px;
+  color: var(--ion-color-medium-shade);
+}
+
+/* Container for all the profile posts */
+.user-posts-container {
+  margin-bottom: var(--user-posts-container-vert-margin);
+  display: flex;
+  flex-wrap: wrap; /* Allow posts to span multiple rows*/
+}
+
+/* Container for the post image */
+.single-post-container {
+  position: relative;
+  flex-basis: calc(33.33%); /* Place 3 posts per row*/
+  padding: 1px;
+  aspect-ratio: 1/1; /* Ensure the post has the same width and height*/
+  overflow: hidden;
+  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+/* Profile Posts */
+.user-post-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Containing for the overlay showing the post like and comment count */
+.post-overlay-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  opacity: 0; /* don't show the content initially*/
+  transition: opacity 0.3s;
+}
+
+.post-overlay-content p {
+  font-size: 17px;
+  padding: 20px;
+}
+
+/* Change the opacity of the content to display it when the post is hovered over*/
+.single-post-container:hover .post-overlay-content {
+  opacity: 1;
+}
+
+/* Media query for small devices (max-width: 736px) */
+@media (max-width: 736px) {
+  .profile-page {
+    padding: var(--profile-page-vert-margin-small)
+      var(--profile-page-hor-margin-small);
+  }
+  .profile-info-container {
+    margin-left: var(--profile-info-container-left-margin-small);
+  }
+  .profile-picture-container {
+    align-items: flex-start; /* Place profile picture at the top for small devices*/
+  }
+  .profile-picture {
+    max-width: 90px; /* Ensure profile picture is always smaller than 90px */
+  }
+  .profile-info {
+    flex: 3; /* Profile info grows 3 times as much as other children for small devices*/
+  }
+  .profile-username-and-actions {
+    flex-direction: column; /* Place the username above the post actions for small devices */
+    align-items: flex-start;
+  }
+  .profile-actions {
+    margin-top: var(--profile-actions-vert-margin-small);
+  }
+  .profile-action {
+    width: 45%;
+    margin-right: var(--profile-actions--buttons-hor-margin-large);
+  }
+  .profile-stats {
+    border-top: solid 0.5px var(--ion-color-medium);
+    margin-top: var(--profile-stats-vert-margin-small);
+    padding: var(--profile-stat-padding-small);
+  }
+  .profile-stat-list {
+    display: flex;
+    justify-content: space-evenly;
+  }
+  .profile-stat-list li {
+    flex-direction: column; /* Place stat numbers above stat category for small devices*/
+    margin: var(--profile-stat-margin-small);
+  }
+  .profile-stat-number {
+    margin-right: 0;
+  }
+  .profile-tablist {
+    margin-top: var(--profile-tablist-vert-margin-small);
+  }
+  .profile-tab {
+    flex: 1;
+  }
+  .profile-tab.selected fa-icon {
+    color: var(--ion-color-primary-tint);
+  }
+  .profile-tab-text {
+    display: none; /* Remove the profile-tab-text for small devices*/
+  }
+}
+
+/* Media query for very small devices (max-width: 360px) since the display gets slightly disoriented*/
+@media (max-width: 360px) {
+  .profile-picture-container {
+    margin-right: var(--profile-picture-margin-right-small);
+  }
+  .profile-action {
+    margin-right: var(--profile-actions--buttons-hor-margin-small);
+  }
+}
