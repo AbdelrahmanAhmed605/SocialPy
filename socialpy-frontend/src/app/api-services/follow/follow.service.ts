@@ -61,9 +61,9 @@ export class FollowService {
     );
   }
 
-  // API call to get a list of users that follow the user (userId)
-  getUsersFollowers(userId: number): Observable<any> {
-    const userFollowersEndpoint = `follower_list/${userId}/`; // create the api endpoint
+  // Get a paginated list (using page parameter) of users that follow the specified user (userId)
+  getUsersFollowers(userId: number, page: number): Observable<any> {
+    const userFollowersEndpoint = `follower_list/${userId}/?page=${page}`; // create the api endpoint
 
     return this.authService.handleAuthenticationToken().pipe(
       switchMap((token) => {
@@ -85,9 +85,9 @@ export class FollowService {
     );
   }
 
-  // API call to get a list of users that the user (userId) is following
-  getUsersFollowing(userId: number): Observable<any> {
-    const userFollowingEndpoint = `following_list/${userId}/`; // create the api endpoint
+  // Get a paginated list (using page parameter) of users that the specified user (userId) is following
+  getUsersFollowing(userId: number, page: number): Observable<any> {
+    const userFollowingEndpoint = `following_list/${userId}/?page=${page}`; // create the api endpoint
 
     return this.authService.handleAuthenticationToken().pipe(
       switchMap((token) => {

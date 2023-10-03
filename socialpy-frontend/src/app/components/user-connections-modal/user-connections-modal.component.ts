@@ -1,6 +1,6 @@
 import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
-import { ModalController } from '@ionic/angular';
+import { ModalController, InfiniteScrollCustomEvent } from '@ionic/angular';
 
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -27,6 +27,8 @@ export class UserConnectionsModalComponent implements OnInit, OnDestroy {
 
   // Contains a list of connection users (either followers or following users)
   connectionUsers: any[] = [];
+  currentConnectionsPage = 1; // keep track of the current page of user connections (for pagination)
+  hasMoreConnectionsData: boolean = false; // Keeps track if there is more paginated data
 
   private destroyed$ = new Subject<void>(); // Subject to track component destruction for subscription cleanup
 
@@ -44,11 +46,13 @@ export class UserConnectionsModalComponent implements OnInit, OnDestroy {
   async fetchUsers() {
     if (this.connectionType === 'followers') {
       this.followService
-        .getUsersFollowers(this.userId)
+        .getUsersFollowers(this.userId, this.currentConnectionsPage)
         .pipe(takeUntil(this.destroyed$))
         .subscribe({
           next: (data: UserConnectionsResponse) => {
-            this.connectionUsers = data.results;
+            this.hasMoreConnectionsData = !!data.next;
+            // Append new paginated results to existing connections array
+            this.connectionUsers = [...this.connectionUsers, ...data.results];
           },
           error: (error) => {
             // Handle any errors here
@@ -57,11 +61,13 @@ export class UserConnectionsModalComponent implements OnInit, OnDestroy {
         });
     } else if (this.connectionType === 'following') {
       this.followService
-        .getUsersFollowing(this.userId)
+        .getUsersFollowing(this.userId, this.currentConnectionsPage)
         .pipe(takeUntil(this.destroyed$))
         .subscribe({
           next: (data: UserConnectionsResponse) => {
-            this.connectionUsers = data.results;
+            this.hasMoreConnectionsData = !!data.next;
+            // Append new paginated results to existing connections array
+            this.connectionUsers = [...this.connectionUsers, ...data.results];
           },
           error: (error) => {
             // Handle any errors here
@@ -69,6 +75,21 @@ export class UserConnectionsModalComponent implements OnInit, OnDestroy {
           },
         });
     }
+  }
+
+  // Infinite scrolling event to call the next page of paginated results
+  loadMoreConnections(event: Event) {
+    // Increment the current page of paginated user connections data
+    this.currentConnectionsPage++;
+
+    // Call the service api with the updated page parameter
+    this.fetchUsers();
+
+    setTimeout(() => {
+      // Complete the infinite scroll event to indicate that loading is done
+      (event as InfiniteScrollCustomEvent).target.complete();
+      // Scroll back to the previous position
+    }, 500);
   }
 
   // Function to close the modal display
