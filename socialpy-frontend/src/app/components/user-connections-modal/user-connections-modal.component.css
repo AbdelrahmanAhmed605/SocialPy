@@ -1,0 +1,46 @@
+ion-toolbar {
+  display: flex;
+  align-items: stretch;
+}
+
+ion-title {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  text-align: center;
+}
+
+ion-toolbar ion-buttons{
+    height: 100%;
+    float: right;
+}
+
+ion-toolbar ion-buttons ion-button{
+    padding: 0 8px;
+}
+
+ion-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  background-color: rgb(204, 204, 204);
+  cursor: pointer;
+}
+
+ion-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+ion-avatar fa-icon {
+  background-color: rgb(204, 204, 204);
+  color: white;
+}
+
+.user-username {
+  cursor: pointer;
+}

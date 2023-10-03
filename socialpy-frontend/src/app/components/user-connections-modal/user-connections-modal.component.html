@@ -1,0 +1,30 @@
+<ion-content>
+    <ion-header>
+        <ion-toolbar>
+            <ion-title>
+                <ng-container *ngIf="connectionType == 'followers'">Followers</ng-container>
+                <ng-container *ngIf="connectionType == 'following'">Following</ng-container>
+            </ion-title>
+            <ion-buttons slot="end">
+                <ion-button (click)="closeModal()">
+                    <fa-icon size="xl" [icon]="faXmark"></fa-icon>
+                </ion-button>
+            </ion-buttons>
+        </ion-toolbar>
+    </ion-header>
+    <ion-list>
+        <ion-item *ngFor="let user of connectionUsers">
+            <ion-avatar slot="start" (click)="goToUserProfilePage(user.id)">
+                <ng-container *ngIf="user.profile_picture; else noProfilePicture">
+                    <img [src]="user.profile_picture" alt="Profile Picture" />
+                </ng-container>
+                <ng-template #noProfilePicture>
+                    <fa-icon [icon]="faUser"></fa-icon>
+                </ng-template>
+            </ion-avatar>
+            <ion-label (click)="goToUserProfilePage(user.id)" class="user-username">
+                {{ user.username}}
+            </ion-label>
+        </ion-item>
+    </ion-list>
+</ion-content>
