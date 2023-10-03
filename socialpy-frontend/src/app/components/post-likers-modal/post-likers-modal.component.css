@@ -1,11 +1,30 @@
+ion-toolbar {
+  display: flex;
+  align-items: stretch;
+}
+
+ion-title {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  text-align: center;
+}
+
+ion-toolbar ion-buttons {
+  height: 100%;
+  float: right;
+}
+
+ion-toolbar ion-buttons ion-button {
+  padding: 0 8px;
+}
+
 ion-item {
   display: flex;
   align-items: center;
   padding: 2px 0;
-}
-
-ion-title {
-  text-align: center;
 }
 
 ion-avatar {
@@ -32,6 +51,6 @@ ion-avatar fa-icon {
   cursor: pointer;
 }
 
-ion-button {
+.user-action-button {
   width: 100px;
 }

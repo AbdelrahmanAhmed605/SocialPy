@@ -3,13 +3,32 @@ ion-content::part(scroll) {
   overscroll-behavior-y: contain;
 }
 
-/* Apply a background to hovered items so the user can see which ion-item/comment they are hovering over*/
-.comment-item:hover ion-item {
-  --background: var(--ion-color-light-shade);
+ion-toolbar {
+  display: flex;
+  align-items: stretch;
 }
 
 ion-title {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
   text-align: center;
+}
+
+ion-toolbar ion-buttons {
+  height: 100%;
+  float: right;
+}
+
+ion-toolbar ion-buttons ion-button {
+  padding: 0 8px;
+}
+
+/* Apply a background to hovered items so the user can see which ion-item/comment they are hovering over*/
+.comment-item:hover ion-item {
+  --background: var(--ion-color-light-shade);
 }
 
 ion-avatar {
