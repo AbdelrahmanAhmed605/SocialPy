@@ -51,10 +51,10 @@
                             <li>
                                 <span class="profile-stat-number">{{ userData.num_posts }}</span>Posts
                             </li>
-                            <li>
+                            <li class="followers-stat" (click)="openUserConnectionsModal(userId, 'followers')">
                                 <span class="profile-stat-number">{{ userData.num_followers }}</span>Followers
                             </li>
-                            <li>
+                            <li class="following-stat" (click)="openUserConnectionsModal(userId, 'following')">
                                 <span class="profile-stat-number">{{ userData.num_following }}</span>Following
                             </li>
                         </ul>
@@ -72,18 +72,18 @@
                             <span class="profile-stat-number">{{ userData.num_posts }}</span>
                             <span class="profile-stat-category"> Posts</span>
                         </li>
-                        <li>
+                        <li class="followers-stat" (click)="openUserConnectionsModal(userId, 'followers')">
                             <span class="profile-stat-number">{{ userData.num_followers }}</span>
                             <span class="profile-stat-category"> Followers</span>
                         </li>
-                        <li>
+                        <li class="following-stat" (click)="openUserConnectionsModal(userId, 'following')">
                             <span class="profile-stat-number">{{ userData.num_following }}</span>
                             <span class="profile-stat-category"> Following</span>
                         </li>
                     </ul>
                 </div>
                 <div class="profile-tablist">
-                    <div class="profile-tab" [ngClass]="{'selected': isSelectedTab === 'posts'}"
+                    <div class="profile-tab" [ngClass]="{'selected': selectedTab === 'posts'}"
                         (click)="selectTab('posts')">
                         <fa-icon [icon]="faTableCells"></fa-icon>
                         <span class="profile-tab-text"> POSTS</span>

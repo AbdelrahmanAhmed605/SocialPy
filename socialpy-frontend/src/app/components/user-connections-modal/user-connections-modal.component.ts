@@ -27,8 +27,6 @@ export class UserConnectionsModalComponent implements OnInit, OnDestroy {
 
   // Contains a list of connection users (either followers or following users)
   connectionUsers: any[] = [];
-  currentUserLikersPage = 1; // keep track of the current page of user likers (for pagination)
-  hasMoreUserLikersData: boolean = false; // Keeps track if there is more paginated data
 
   private destroyed$ = new Subject<void>(); // Subject to track component destruction for subscription cleanup
 
