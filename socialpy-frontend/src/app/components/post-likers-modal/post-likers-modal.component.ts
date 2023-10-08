@@ -64,6 +64,7 @@ export class PostLikersModalComponent implements OnInit, OnDestroy {
       });
   }
 
+  // Infinite scrolling event to call the next page of paginated results
   loadMoreLikers(event: Event) {
     // Increment the current page of paginated user likers data
     this.currentUserLikersPage++;

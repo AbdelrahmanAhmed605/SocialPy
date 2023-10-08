@@ -1,0 +1,55 @@
+<ion-content>
+    <ion-header>
+        <ion-toolbar>
+            <ion-title>
+                <ng-container *ngIf="connectionType == 'followers'">Followers</ng-container>
+                <ng-container *ngIf="connectionType == 'following'">Following</ng-container>
+            </ion-title>
+            <ion-buttons slot="end">
+                <ion-button (click)="closeModal()">
+                    <fa-icon size="xl" [icon]="faXmark"></fa-icon>
+                </ion-button>
+            </ion-buttons>
+        </ion-toolbar>
+    </ion-header>
+    <div class="searchbar-container">
+        <ion-searchbar class="username-searchbar" [debounce]="500" (ionInput)="searchUsername($event)"></ion-searchbar>
+        <ion-spinner *ngIf="loadingUsers" name="circles"></ion-spinner>
+    </div>
+    <ion-list *ngIf="connectionUsers.length > 0; else noResults">
+        <ion-item *ngFor="let user of connectionUsers">
+            <ion-avatar slot="start" (click)="goToUserProfilePage(user.id)">
+                <ng-container *ngIf="user.profile_picture; else noProfilePicture">
+                    <img [src]="user.profile_picture" alt="Profile Picture" />
+                </ng-container>
+                <ng-template #noProfilePicture>
+                    <fa-icon [icon]="faUser"></fa-icon>
+                </ng-template>
+            </ion-avatar>
+            <ion-label (click)="goToUserProfilePage(user.id)" class="user-username">
+                {{ user.username}}
+            </ion-label>
+            <!-- Button showing "Follow" to allow us to followe the user if we are not following them -->
+            <ion-button class="user-action-button" *ngIf="user.requesting_user_follow_status === false"
+                (click)="followUser(user.id)">
+                Follow
+            </ion-button>
+            <!-- Button showing "Following" or "Requested" based on our current follow status
+                            and allows us to unfollow them when clicked -->
+            <ion-button class="user-action-button" (click)="unfollowUser(user.id)"
+                [ngStyle]="{'--background':'var(--ion-color-medium-shade)'}"
+                *ngIf="user.requesting_user_follow_status === 'accepted' || user.requesting_user_follow_status === 'pending'">
+                {{ user.requesting_user_follow_status === 'accepted' ? 'Following' : 'Requested' }}
+            </ion-button>
+        </ion-item>
+    </ion-list>
+    <ng-template #noResults>
+        <div class="no-results-message" *ngIf="!loadingUsers">
+            No Results Found.
+        </div>
+    </ng-template>
+
+    <ion-infinite-scroll [disabled]="!hasMoreConnectionsData" (ionInfinite)="loadMoreConnections($event)">
+        <ion-infinite-scroll-content loadingText="Loading..." loadingSpinner="bubbles"></ion-infinite-scroll-content>
+    </ion-infinite-scroll>
+</ion-content>

@@ -154,6 +154,10 @@ ion-content {
   margin-left: 0;
 }
 
+.followers-stat, .following-stat{
+  cursor: pointer;
+}
+
 /* Styles for numbers associated with stat categories (ex: the "8" in "8 posts")*/
 .profile-stat-number {
   margin-right: 5px;

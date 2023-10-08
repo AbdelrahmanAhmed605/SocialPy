@@ -221,9 +221,17 @@ class FollowerListView(generics.ListAPIView):
         except User.DoesNotExist:
             raise NotFound("User not found")
 
+        # Get the 'username' query parameter from the request, or use None if not provided
+        username_query = self.request.query_params.get('username', None)
+
         try:
             # Get a queryset of the user's followers
-            followers = User.objects.filter(following__following_id=user.id, following__follow_status='accepted')
+            followers = User.objects.filter(following__following_id=user.id, following__follow_status='accepted').order_by('id')
+
+            # Apply username filter if the query parameter is provided
+            if username_query:
+                followers = followers.filter(username__icontains=username_query)
+
             return followers
         except Exception as e:
             # Handle other unexpected errors
@@ -260,9 +268,17 @@ class FollowingListView(generics.ListAPIView):
         except User.DoesNotExist:
             raise NotFound("User not found")
 
+        # Get the 'username' query parameter from the request, or use None if not provided
+        username_query = self.request.query_params.get('username', None)
+
         try:
             # Get a queryset of the users that the requesting user follows
-            following_users = User.objects.filter(follower__follower_id=user.id, follower__follow_status='accepted')
+            following_users = User.objects.filter(follower__follower_id=user.id, follower__follow_status='accepted').order_by('id')
+
+            # Apply username filter if the query parameter is provided
+            if username_query:
+                following_users = following_users.filter(username__icontains=username_query)
+
             return following_users
         except Exception as e:
             # Handle other unexpected errors

@@ -14,7 +14,12 @@ body {
   font-family: Roboto, "Helvetica Neue", sans-serif;
 }
 
-/* Custome styles for the ionic alert in the PostCommentsModal Component must be placed in a global stylesheet*/
+ion-infinite-scroll {
+  height: 1px;
+}
+
+/* Custome styles for the ionic alert used in the modal components must be placed in a global stylesheet
+(required by ionic for controlled alerts) */
 
 .delete-comment-alert .alert-wrapper {
   background-color: var(--ion-color-light-tint);

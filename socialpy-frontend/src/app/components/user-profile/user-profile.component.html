@@ -39,7 +39,7 @@
                                 *ngIf="userData.follow_status === 'accepted' || userData.follow_status === 'pending'">
                                 {{ userData.follow_status === 'accepted' ? 'Following' : 'Requested' }}
                             </ion-button>
-                            <ion-button class="profile-action"
+                            <ion-button *ngIf="userData.follow_status !== 'self'" class="profile-action"
                                 [ngStyle]="{'--background':'var(--ion-color-medium-shade)'}">
                                 Message
                             </ion-button>
@@ -51,10 +51,13 @@
                             <li>
                                 <span class="profile-stat-number">{{ userData.num_posts }}</span>Posts
                             </li>
-                            <li>
+                            <li [ngClass]="userData.num_followers > 0 ? 'followers-stat' : null"
+                                (click)="userData.num_followers > 0 ? openUserConnectionsModal(userId, 'followers') : null">
                                 <span class="profile-stat-number">{{ userData.num_followers }}</span>Followers
                             </li>
-                            <li>
+
+                            <li [ngClass]="userData.num_following > 0 ? 'following-stat' : null"
+                                (click)="userData.num_following > 0 ? openUserConnectionsModal(userId, 'following') : null">
                                 <span class="profile-stat-number">{{ userData.num_following }}</span>Following
                             </li>
                         </ul>
@@ -72,18 +75,18 @@
                             <span class="profile-stat-number">{{ userData.num_posts }}</span>
                             <span class="profile-stat-category"> Posts</span>
                         </li>
-                        <li>
+                        <li class="followers-stat" (click)="openUserConnectionsModal(userId, 'followers')">
                             <span class="profile-stat-number">{{ userData.num_followers }}</span>
                             <span class="profile-stat-category"> Followers</span>
                         </li>
-                        <li>
+                        <li class="following-stat" (click)="openUserConnectionsModal(userId, 'following')">
                             <span class="profile-stat-number">{{ userData.num_following }}</span>
                             <span class="profile-stat-category"> Following</span>
                         </li>
                     </ul>
                 </div>
                 <div class="profile-tablist">
-                    <div class="profile-tab" [ngClass]="{'selected': isSelectedTab === 'posts'}"
+                    <div class="profile-tab" [ngClass]="{'selected': selectedTab === 'posts'}"
                         (click)="selectTab('posts')">
                         <fa-icon [icon]="faTableCells"></fa-icon>
                         <span class="profile-tab-text"> POSTS</span>
@@ -102,7 +105,8 @@
                     </ng-container>
                 </div>
                 <ion-infinite-scroll [disabled]="!hasMoreUserProfilePosts" (ionInfinite)="loadMoreProfilePosts($event)">
-                    <ion-infinite-scroll-content loadingText="Loading..." loadingSpinner="bubbles"></ion-infinite-scroll-content>
+                    <ion-infinite-scroll-content loadingText="Loading..."
+                        loadingSpinner="bubbles"></ion-infinite-scroll-content>
                 </ion-infinite-scroll>
             </div>
         </div>

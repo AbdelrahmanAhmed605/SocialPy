@@ -69,6 +69,7 @@ request's returned Observable structure. SwitchMap also preserves the token valu
     );
   }
 
+  // Get a paginated list (using page parameter) of users that liked a specific post
   postLikersList(postId: number, page: number): Observable<any> {
     const postLikersEndpoint = `post/${postId}/likers/?page=${page}`;
 
