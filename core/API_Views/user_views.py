@@ -214,6 +214,8 @@ def user_profile(request, user_id):
     # Initialize the response_data dictionary
     response_data = {
         'username': user.username,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
         'profile_picture': user.profile_picture.url if user.profile_picture else None,
         'bio': user.bio,
         'follow_status': follow_status,

@@ -62,29 +62,42 @@
                             </li>
                         </ul>
                     </div>
-                    <div *ngIf="userData.bio" class="profile-bio">
-                        <p>{{userData.bio}}</p>
+                    <!-- user details (user first&last name and profile bio) for large screens (placed within profile-info div) -->
+                    <div *ngIf="isLargeScreen" class="profile-user-details">
+                        <div *ngIf="userData.first_name || userData.last_name" class="profile-first-last-name">
+                            {{userData.first_name}} {{userData.last_name}}
+                        </div>
+                        <div class="profile-user-details-separator"></div>
+                        <div *ngIf="userData.bio">{{userData.bio}}</div>
                     </div>
                 </div>
             </div>
-            <div class="profile-content">
-                <!-- Profile Stats for Small Screen -->
-                <div *ngIf="!isLargeScreen" class="profile-stats">
-                    <ul class="profile-stat-list">
-                        <li>
-                            <span class="profile-stat-number">{{ userData.num_posts }}</span>
-                            <span class="profile-stat-category"> Posts</span>
-                        </li>
-                        <li class="followers-stat" (click)="openUserConnectionsModal(userId, 'followers')">
-                            <span class="profile-stat-number">{{ userData.num_followers }}</span>
-                            <span class="profile-stat-category"> Followers</span>
-                        </li>
-                        <li class="following-stat" (click)="openUserConnectionsModal(userId, 'following')">
-                            <span class="profile-stat-number">{{ userData.num_following }}</span>
-                            <span class="profile-stat-category"> Following</span>
-                        </li>
-                    </ul>
+            <!-- user details (user first&last name and profile bio) for small screens (placed below profile-info div) -->
+            <div *ngIf="!isLargeScreen" class="profile-user-details">
+                <div *ngIf="userData.first_name || userData.last_name" class="profile-first-last-name">
+                    {{userData.first_name}} {{userData.last_name}}
                 </div>
+                <div class="profile-user-details-separator"></div>
+                <div *ngIf="userData.bio">{{userData.bio}}</div>
+            </div>
+            <!-- Profile Stats for Small Screen -->
+            <div *ngIf="!isLargeScreen" class="profile-stats">
+                <ul class="profile-stat-list">
+                    <li>
+                        <span class="profile-stat-number">{{ userData.num_posts }}</span>
+                        <span class="profile-stat-category"> Posts</span>
+                    </li>
+                    <li class="followers-stat" (click)="openUserConnectionsModal(userId, 'followers')">
+                        <span class="profile-stat-number">{{ userData.num_followers }}</span>
+                        <span class="profile-stat-category"> Followers</span>
+                    </li>
+                    <li class="following-stat" (click)="openUserConnectionsModal(userId, 'following')">
+                        <span class="profile-stat-number">{{ userData.num_following }}</span>
+                        <span class="profile-stat-category"> Following</span>
+                    </li>
+                </ul>
+            </div>
+            <div *ngIf="userData.can_view" class="profile-content">
                 <div class="profile-tablist">
                     <div class="profile-tab" [ngClass]="{'selected': selectedTab === 'posts'}"
                         (click)="selectTab('posts')">
