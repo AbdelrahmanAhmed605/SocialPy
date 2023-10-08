@@ -12,7 +12,11 @@
             </ion-buttons>
         </ion-toolbar>
     </ion-header>
-    <ion-list>
+    <div class="searchbar-container">
+        <ion-searchbar class="username-searchbar" [debounce]="500" (ionInput)="searchUsername($event)"></ion-searchbar>
+        <ion-spinner *ngIf="loadingUsers" name="circles"></ion-spinner>
+    </div>
+    <ion-list *ngIf="connectionUsers.length > 0; else noResults">
         <ion-item *ngFor="let user of connectionUsers">
             <ion-avatar slot="start" (click)="goToUserProfilePage(user.id)">
                 <ng-container *ngIf="user.profile_picture; else noProfilePicture">
@@ -27,6 +31,12 @@
             </ion-label>
         </ion-item>
     </ion-list>
+    <ng-template #noResults>
+        <div class="no-results-message" *ngIf="!loadingUsers">
+            No Results Found.
+        </div>
+    </ng-template>
+
     <ion-infinite-scroll [disabled]="!hasMoreConnectionsData" (ionInfinite)="loadMoreConnections($event)">
         <ion-infinite-scroll-content loadingText="Loading..." loadingSpinner="bubbles"></ion-infinite-scroll-content>
     </ion-infinite-scroll>

@@ -27,8 +27,12 @@ export class UserConnectionsModalComponent implements OnInit, OnDestroy {
 
   // Contains a list of connection users (either followers or following users)
   connectionUsers: any[] = [];
+  loadingUsers: boolean = true; // Keep track if user connections data is currently being fetched
   currentConnectionsPage = 1; // keep track of the current page of user connections (for pagination)
   hasMoreConnectionsData: boolean = false; // Keeps track if there is more paginated data
+
+  // Keeps track of the current username search filter applied by the user
+  usernameSearchQuery!: string | undefined;
 
   private destroyed$ = new Subject<void>(); // Subject to track component destruction for subscription cleanup
 
@@ -43,20 +47,24 @@ export class UserConnectionsModalComponent implements OnInit, OnDestroy {
 
   // Call the service api function to retrieve the list of users based on the connectionType
   // The connectionType lets us know if we should fetch the users followers or following
-  async fetchUsers() {
+  // username argument is optional to filter the data to match the username only if provided
+  async fetchUsers(username?: string) {
+    this.loadingUsers = true;
     if (this.connectionType === 'followers') {
       this.followService
-        .getUsersFollowers(this.userId, this.currentConnectionsPage)
+        .getUsersFollowers(this.userId, this.currentConnectionsPage, username)
         .pipe(takeUntil(this.destroyed$))
         .subscribe({
           next: (data: UserConnectionsResponse) => {
             this.hasMoreConnectionsData = !!data.next;
             // Append new paginated results to existing connections array
             this.connectionUsers = [...this.connectionUsers, ...data.results];
+            this.loadingUsers = false;
           },
           error: (error) => {
             // Handle any errors here
             console.error('Error fetching followers:', error);
+            this.loadingUsers = false;
           },
         });
     } else if (this.connectionType === 'following') {
@@ -68,10 +76,12 @@ export class UserConnectionsModalComponent implements OnInit, OnDestroy {
             this.hasMoreConnectionsData = !!data.next;
             // Append new paginated results to existing connections array
             this.connectionUsers = [...this.connectionUsers, ...data.results];
+            this.loadingUsers = false;
           },
           error: (error) => {
             // Handle any errors here
             console.error('Error fetching followers:', error);
+            this.loadingUsers = false;
           },
         });
     }
@@ -83,13 +93,53 @@ export class UserConnectionsModalComponent implements OnInit, OnDestroy {
     this.currentConnectionsPage++;
 
     // Call the service api with the updated page parameter
-    this.fetchUsers();
+    if (
+      this.usernameSearchQuery === null ||
+      this.usernameSearchQuery === undefined
+    ) {
+      this.fetchUsers();
+    } else {
+      this.fetchUsers(this.usernameSearchQuery);
+    }
 
     setTimeout(() => {
       // Complete the infinite scroll event to indicate that loading is done
       (event as InfiniteScrollCustomEvent).target.complete();
       // Scroll back to the previous position
     }, 500);
+  }
+
+  // Handles user input in ionic searchbar for searching usernames and updates the user list accordingly.
+  searchUsername(event: Event) {
+    if (event && event.target) {
+      // Get the lowercase username query from the input field
+      const usernameQuery = (
+        event.target as HTMLInputElement
+      ).value.toLowerCase();
+
+      if (usernameQuery === '' || usernameQuery === null) {
+        // Clear the username filter if the query is empty
+        this.usernameSearchQuery = undefined;
+      } else {
+        // Set the username filter to the query if it exists
+        this.usernameSearchQuery = usernameQuery;
+      }
+
+      // Reset state variables and fetch users based on the updated username filter
+      this.resetAndFetchUsers(this.usernameSearchQuery);
+    }
+  }
+
+  // Resets data and pagination states and fetches user connections.
+  // If 'usernameQuery' is provided, it filters results; otherwise, it retrieves the original list.
+  resetAndFetchUsers(usernameQuery?: string) {
+    this.currentConnectionsPage = 1;
+    this.hasMoreConnectionsData = false;
+    this.loadingUsers = true;
+    this.connectionUsers = [];
+
+    // Fetch user connections with the optional username filter if it exists
+    this.fetchUsers(usernameQuery);
   }
 
   // Function to close the modal display
