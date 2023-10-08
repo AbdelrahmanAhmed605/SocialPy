@@ -51,13 +51,16 @@
                             <li>
                                 <span class="profile-stat-number">{{ userData.num_posts }}</span>Posts
                             </li>
-                            <li [ngClass]="userData.num_followers > 0 ? 'followers-stat' : null"
-                                (click)="userData.num_followers > 0 ? openUserConnectionsModal(userId, 'followers') : null">
+                            <!-- Shows a user's follower count and opens a modal displaying the user's followers when clicked-->
+                            <!-- The modal click function is only activated if we can view the profile and the follower count is greater than 0-->
+                            <li [ngClass]="userData.can_view && userData.num_followers > 0 ? 'followers-stat' : null"
+                                (click)="userData.can_view && userData.num_followers > 0 ? openUserConnectionsModal(userId, 'followers') : null">
                                 <span class="profile-stat-number">{{ userData.num_followers }}</span>Followers
                             </li>
-
-                            <li [ngClass]="userData.num_following > 0 ? 'following-stat' : null"
-                                (click)="userData.num_following > 0 ? openUserConnectionsModal(userId, 'following') : null">
+                            <!-- Shows a user's following count and opens a modal displaying the user's followings when clicked-->
+                            <!-- The modal click function is only activated if we can view the profile and the following count is greater than 0-->
+                            <li [ngClass]="userData.can_view && userData.num_following > 0 ? 'following-stat' : null"
+                                (click)="userData.can_view && userData.num_following > 0 ? openUserConnectionsModal(userId, 'following') : null">
                                 <span class="profile-stat-number">{{ userData.num_following }}</span>Following
                             </li>
                         </ul>
@@ -80,24 +83,31 @@
                 <div class="profile-user-details-separator"></div>
                 <div *ngIf="userData.bio">{{userData.bio}}</div>
             </div>
-            <!-- Profile Stats for Small Screen -->
+            <!-- Profile Stats for Small Screens -->
             <div *ngIf="!isLargeScreen" class="profile-stats">
                 <ul class="profile-stat-list">
                     <li>
                         <span class="profile-stat-number">{{ userData.num_posts }}</span>
                         <span class="profile-stat-category"> Posts</span>
                     </li>
-                    <li class="followers-stat" (click)="openUserConnectionsModal(userId, 'followers')">
+                    <!-- Shows a user's follower count and opens a modal displaying the user's followers when clicked-->
+                    <!-- The modal click function is only activated if we can view the profile and the follower count is greater than 0-->
+                    <li [ngClass]="userData.can_view && userData.num_followers > 0 ? 'followers-stat' : null"
+                        (click)="userData.can_view && userData.num_followers > 0 ? openUserConnectionsModal(userId, 'followers') : null">
                         <span class="profile-stat-number">{{ userData.num_followers }}</span>
                         <span class="profile-stat-category"> Followers</span>
                     </li>
-                    <li class="following-stat" (click)="openUserConnectionsModal(userId, 'following')">
+                    <!-- Shows a user's following count and opens a modal displaying the user's followings when clicked-->
+                    <!-- The modal click function is only activated if we can view the profile and the following count is greater than 0-->
+                    <li [ngClass]="userData.can_view && userData.num_following > 0 ? 'following-stat' : null"
+                        (click)="userData.can_view && userData.num_following > 0 ? openUserConnectionsModal(userId, 'following') : null">
                         <span class="profile-stat-number">{{ userData.num_following }}</span>
                         <span class="profile-stat-category"> Following</span>
                     </li>
                 </ul>
             </div>
-            <div *ngIf="userData.can_view" class="profile-content">
+            <!-- Shows the profile posts if the user can view them (profile not a private account that the user doesn't follow)-->
+            <div *ngIf="userData.can_view; else privateProfile" class="profile-content">
                 <div class="profile-tablist">
                     <div class="profile-tab" [ngClass]="{'selected': selectedTab === 'posts'}"
                         (click)="selectTab('posts')">
@@ -122,6 +132,18 @@
                         loadingSpinner="bubbles"></ion-infinite-scroll-content>
                 </ion-infinite-scroll>
             </div>
+            <!-- Displayed when the profile is private and the user is not following them -->
+            <ng-template #privateProfile>
+                <div class="private-profile-content">
+                    <div class="private-profile-icon-container">
+                        <fa-icon size="4x" [icon]="faLock"></fa-icon>
+                    </div>
+                    <div class="private-profile-message">
+                        <p>This Account is Private</p>
+                        <p>Follow to see their photos and videos.</p>
+                    </div>
+                </div>
+            </ng-template>
         </div>
     </div>
 </ion-content>

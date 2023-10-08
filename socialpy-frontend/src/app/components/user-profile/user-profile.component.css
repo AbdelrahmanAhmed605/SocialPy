@@ -171,11 +171,11 @@ ion-content {
   margin-top: var(--profile-user-details-vert-margin-large);
 }
 
-.profile-first-last-name{
+.profile-first-last-name {
   font-weight: 600;
 }
 
-.profile-user-details-separator{
+.profile-user-details-separator {
   padding: var(--profile-user-details-separator-padding);
 }
 
@@ -252,6 +252,24 @@ ion-content {
 /* Change the opacity of the content to display it when the post is hovered over*/
 .single-post-container:hover .post-overlay-content {
   opacity: 1;
+}
+
+.private-profile-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px;
+}
+
+.private-profile-icon-container {
+  width: fit-content;
+  aspect-ratio: 1/1;
+  padding: 15px;
+  margin-bottom: 20px;
+  border: solid;
+  border-radius: 50%;
 }
 
 /* Media query for small devices (max-width: 736px) */
