@@ -23,6 +23,7 @@ import {
   faHeart,
   faComment,
   faLock,
+  faCamera,
 } from '@fortawesome/free-solid-svg-icons';
 
 @Component({
@@ -49,6 +50,7 @@ export class UserProfileComponent implements OnInit, OnDestroy {
   faHeart = faHeart;
   faComment = faComment;
   faLock = faLock;
+  faCamera = faCamera;
 
   isLargeScreen!: boolean; // determines if the width of the device is large or small
 

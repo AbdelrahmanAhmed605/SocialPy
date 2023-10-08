@@ -116,7 +116,7 @@
                     </div>
                 </div>
                 <!-- User Posts -->
-                <div class="user-posts-container">
+                <div *ngIf="userData.posts.length > 0; else noPosts" class="user-posts-container">
                     <ng-container *ngFor="let post of userData.posts">
                         <div class="single-post-container">
                             <div class="post-overlay-content">
@@ -131,6 +131,17 @@
                     <ion-infinite-scroll-content loadingText="Loading..."
                         loadingSpinner="bubbles"></ion-infinite-scroll-content>
                 </ion-infinite-scroll>
+                <!-- Displayed when the user has no posts-->
+                <ng-template #noPosts>
+                    <div class="no-posts-content">
+                        <div class="no-posts-icon-container">
+                            <fa-icon size="4x" [icon]="faCamera"></fa-icon>
+                        </div>
+                        <div class="no-posts-message">
+                            <p>No Posts Yet</p>
+                        </div>
+                    </div>
+                </ng-template>
             </div>
             <!-- Displayed when the profile is private and the user is not following them -->
             <ng-template #privateProfile>
