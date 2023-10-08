@@ -51,10 +51,13 @@
                             <li>
                                 <span class="profile-stat-number">{{ userData.num_posts }}</span>Posts
                             </li>
-                            <li class="followers-stat" (click)="openUserConnectionsModal(userId, 'followers')">
+                            <li [ngClass]="userData.num_followers > 0 ? 'followers-stat' : null"
+                                (click)="userData.num_followers > 0 ? openUserConnectionsModal(userId, 'followers') : null">
                                 <span class="profile-stat-number">{{ userData.num_followers }}</span>Followers
                             </li>
-                            <li class="following-stat" (click)="openUserConnectionsModal(userId, 'following')">
+                            
+                            <li [ngClass]="userData.num_following > 0 ? 'following-stat' : null"
+                                (click)="userData.num_following > 0 ? openUserConnectionsModal(userId, 'following') : null">
                                 <span class="profile-stat-number">{{ userData.num_following }}</span>Following
                             </li>
                         </ul>
