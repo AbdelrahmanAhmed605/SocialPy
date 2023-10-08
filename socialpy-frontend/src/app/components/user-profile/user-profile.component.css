@@ -3,18 +3,14 @@ ion-content {
   --profile-page-hor-padding-large: 20px;
   --profile-page-vert-margin-large: 0px;
   --profile-page-hor-margin-large: 8%;
-  --profile-page-vert-margin-small: 0px;
-  --profile-page-hor-margin-small: 0px;
+  --profile-page-margin-small: 0px;
+  --profile-page-padding-small: 0px;
 
   --profile-info-container-vert-margin: 40px;
   --profile-info-container-left-margin-small: 15px;
 
-  --profile-picture-dimensions-large: 180px;
-  --profile-picture-dimensions-small: 75px;
-  --profile-picture-margin-right-large: 30px;
-  --profile-picture-margin-left-large: 20px;
-  --profile-picture-margin-right-small: 10px;
-  --profile-picture-margin-left-small: 15px;
+  --profile-pic-container-margin-right-large: 30px;
+  --profile-pic-container-margin-right-small: 10px;
 
   --profile-username-hor-margin: 50px;
 
@@ -28,7 +24,10 @@ ion-content {
   --profile-stat-margin-small: 0px;
   --profile-stat-padding-small: 12px 0px;
 
-  --profile-bio-vert-margin-large: 20px;
+  --profile-user-details-vert-margin-large: 20px;
+  --profile-user-details-vert-margin-small: 20px;
+  --profile-user-details-hor-margin-small: 15px;
+  --profile-user-details-separator-padding: 6px 0;
 
   --profile-tablist-vert-margin-large: 40px;
   --profile-tablist-vert-margin-small: 0px;
@@ -66,7 +65,7 @@ ion-content {
 }
 
 .profile-picture-container {
-  margin-right: var(--profile-picture-margin-right-large);
+  margin-right: var(--profile-pic-container-margin-right-large);
   display: flex;
   justify-content: flex-start;
   align-items: center;
@@ -74,9 +73,8 @@ ion-content {
 }
 
 .profile-picture {
-  max-width: 150px;
+  width: 140px;
   border-radius: 50%;
-  width: 100%; /* Take up 100% of the container */
   aspect-ratio: 1/1; /* Ensure the profile picture has the same width and height*/
   display: inline-flex;
   align-items: center;
@@ -126,6 +124,10 @@ ion-content {
   margin-right: var(--profile-username-hor-margin);
 }
 
+.profile-actions {
+  display: flex;
+}
+
 .profile-action {
   margin-right: var(--profile-actions--buttons-hor-margin-large);
 }
@@ -154,7 +156,8 @@ ion-content {
   margin-left: 0;
 }
 
-.followers-stat, .following-stat{
+.followers-stat,
+.following-stat {
   cursor: pointer;
 }
 
@@ -164,8 +167,20 @@ ion-content {
   font-weight: 600;
 }
 
-.profile-bio {
-  margin-top: var(--profile-bio-vert-margin-large);
+.profile-user-details {
+  margin-top: var(--profile-user-details-vert-margin-large);
+}
+
+.profile-first-last-name{
+  font-weight: 600;
+}
+
+.profile-user-details-separator{
+  padding: var(--profile-user-details-separator-padding);
+}
+
+.profile-content {
+  width: 100%;
 }
 
 .profile-tablist {
@@ -242,8 +257,9 @@ ion-content {
 /* Media query for small devices (max-width: 736px) */
 @media (max-width: 736px) {
   .profile-page {
-    padding: var(--profile-page-vert-margin-small)
-      var(--profile-page-hor-margin-small);
+    width: 100%;
+    margin: var(--profile-page-margin-small);
+    padding: var(--profile-page-padding-small);
   }
   .profile-info-container {
     margin-left: var(--profile-info-container-left-margin-small);
@@ -269,6 +285,7 @@ ion-content {
     margin-right: var(--profile-actions--buttons-hor-margin-large);
   }
   .profile-stats {
+    width: 100%;
     border-top: solid 0.5px var(--ion-color-medium);
     margin-top: var(--profile-stats-vert-margin-small);
     padding: var(--profile-stat-padding-small);
@@ -283,6 +300,11 @@ ion-content {
   }
   .profile-stat-number {
     margin-right: 0;
+  }
+  .profile-user-details {
+    width: 100%;
+    margin-top: var(--profile-user-details-vert-margin-small);
+    margin-left: var(--profile-user-details-hor-margin-small);
   }
   .profile-tablist {
     margin-top: var(--profile-tablist-vert-margin-small);
@@ -301,7 +323,7 @@ ion-content {
 /* Media query for very small devices (max-width: 360px) since the display gets slightly disoriented*/
 @media (max-width: 360px) {
   .profile-picture-container {
-    margin-right: var(--profile-picture-margin-right-small);
+    margin-right: var(--profile-pic-container-margin-right-small);
   }
   .profile-action {
     margin-right: var(--profile-actions--buttons-hor-margin-small);
