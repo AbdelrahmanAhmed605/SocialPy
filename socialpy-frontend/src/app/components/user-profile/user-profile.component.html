@@ -39,7 +39,7 @@
                                 *ngIf="userData.follow_status === 'accepted' || userData.follow_status === 'pending'">
                                 {{ userData.follow_status === 'accepted' ? 'Following' : 'Requested' }}
                             </ion-button>
-                            <ion-button class="profile-action"
+                            <ion-button *ngIf="userData.follow_status !== 'self'" class="profile-action"
                                 [ngStyle]="{'--background':'var(--ion-color-medium-shade)'}">
                                 Message
                             </ion-button>
@@ -55,7 +55,7 @@
                                 (click)="userData.num_followers > 0 ? openUserConnectionsModal(userId, 'followers') : null">
                                 <span class="profile-stat-number">{{ userData.num_followers }}</span>Followers
                             </li>
-                            
+
                             <li [ngClass]="userData.num_following > 0 ? 'following-stat' : null"
                                 (click)="userData.num_following > 0 ? openUserConnectionsModal(userId, 'following') : null">
                                 <span class="profile-stat-number">{{ userData.num_following }}</span>Following
@@ -105,7 +105,8 @@
                     </ng-container>
                 </div>
                 <ion-infinite-scroll [disabled]="!hasMoreUserProfilePosts" (ionInfinite)="loadMoreProfilePosts($event)">
-                    <ion-infinite-scroll-content loadingText="Loading..." loadingSpinner="bubbles"></ion-infinite-scroll-content>
+                    <ion-infinite-scroll-content loadingText="Loading..."
+                        loadingSpinner="bubbles"></ion-infinite-scroll-content>
                 </ion-infinite-scroll>
             </div>
         </div>

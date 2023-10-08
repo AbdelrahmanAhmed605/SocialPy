@@ -1,6 +1,10 @@
 import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
-import { ModalController, InfiniteScrollCustomEvent } from '@ionic/angular';
+import {
+  ModalController,
+  InfiniteScrollCustomEvent,
+  ToastController,
+} from '@ionic/angular';
 
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -22,7 +26,8 @@ export class UserConnectionsModalComponent implements OnInit, OnDestroy {
   constructor(
     private router: Router,
     private followService: FollowService,
-    private modalCtrl: ModalController
+    private modalCtrl: ModalController,
+    private toastCtrl: ToastController
   ) {}
 
   // Contains a list of connection users (either followers or following users)
@@ -140,6 +145,96 @@ export class UserConnectionsModalComponent implements OnInit, OnDestroy {
 
     // Fetch user connections with the optional username filter if it exists
     this.fetchUsers(usernameQuery);
+  }
+
+  // Function to follow a user with a specified id
+  followUser(userId: number) {
+    // Call the service API function to follow the user
+    this.followService
+      .followUser(userId)
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe({
+        next: (response) => {
+          if (response && response.follow_status) {
+            // Find the index of the user in the connectionUsers array
+            const userIndex = this.connectionUsers.findIndex(
+              (user) => user.id === userId
+            );
+            if (userIndex !== -1) {
+              // Update the requesting_user_follow_status based on the API response to update the UI
+              this.connectionUsers[userIndex].requesting_user_follow_status =
+                response.follow_status;
+            } else {
+              console.error(
+                'An error occurred while processing your request. Please try again later.'
+              );
+              // Display a toast message to alert the user an error occured
+              this.followUserErrorToast();
+            }
+          }
+        },
+        error: (error) => {
+          console.error('Error following user:', error);
+          // Display a toast message to alert the user an error occured
+          this.followUserErrorToast();
+        },
+      });
+  }
+
+  // Display an error ionic toast at the top of the page to alert the user if an error occured following a user
+  async followUserErrorToast() {
+    const toast = await this.toastCtrl.create({
+      message: 'Error following user',
+      duration: 1500,
+      position: 'top',
+    });
+
+    await toast.present();
+  }
+
+  // Function to unfollow a user with a specified id
+  unfollowUser(userId: number) {
+    // Call the service API function to unfollow the user
+    this.followService
+      .unfollowUser(userId)
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe({
+        next: (response) => {
+          if (response) {
+            // Find the index of the specified user in the connectionUsers array
+            const userIndex = this.connectionUsers.findIndex(
+              (user) => user.id === userId
+            );
+            if (userIndex !== -1) {
+              // Update the requesting_user_follow_status based on the API response to update the UI
+              this.connectionUsers[userIndex].requesting_user_follow_status =
+                response.follow_status;
+            } else {
+              console.error(
+                'An error occurred while processing your request. Please try again later.'
+              );
+              // Display a toast message to alert the user an error occured
+              this.unfollowUserErrorToast();
+            }
+          }
+        },
+        error: (error) => {
+          console.error('Error unfollowing user:', error);
+          // Display a toast message to alert the user an error occured
+          this.unfollowUserErrorToast();
+        },
+      });
+  }
+
+  // Display an error ionic toast at the top of the page to alert the user if an error occured unfollowing a user
+  async unfollowUserErrorToast() {
+    const toast = await this.toastCtrl.create({
+      message: 'Error unfollowing user',
+      duration: 1500,
+      position: 'top',
+    });
+
+    await toast.present();
   }
 
   // Function to close the modal display

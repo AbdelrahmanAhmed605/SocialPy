@@ -56,6 +56,10 @@ ion-avatar fa-icon {
   cursor: pointer;
 }
 
+.user-action-button {
+  width: 100px;
+}
+
 .no-results-message {
   text-align: center;
   padding: 20px;
