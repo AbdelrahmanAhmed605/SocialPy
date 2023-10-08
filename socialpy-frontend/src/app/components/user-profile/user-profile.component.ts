@@ -120,16 +120,18 @@ export class UserProfileComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroyed$))
       .subscribe({
         next: (data: UserProfileResponse) => {
+          // UserData is undefined the first time we populate the userData so we set userData = data
           if (this.userData === undefined) {
-            this.hasMoreUserProfilePosts = !!data.pagination.next; // Check if there is more paginated data
             this.userData = data;
-          } else {
             this.hasMoreUserProfilePosts = !!data.pagination.next; // Check if there is more paginated data
-            // Append new results to existing posts
+          } else {
+            // For subsequent calls (for loading more profile posts) where userData is already defined,
+            // we append the posts to the existing posts array
             this.userData.posts = [
               ...(this.userData.posts || []),
               ...data.posts,
             ];
+            this.hasMoreUserProfilePosts = !!data.pagination.next; // Check if there is more paginated data
           }
         },
         error: (error) => {
@@ -168,7 +170,11 @@ export class UserProfileComponent implements OnInit, OnDestroy {
           ) {
             // update the follow status property in the userData state
             this.userData.follow_status = response.follow_status;
-            this.userData.num_followers += 1;
+            // If the follow status is accepted (not pending request to private user) then increment the profiles
+            // follower count
+            if (response.follow_status === 'accepted') {
+              this.userData.num_followers += 1;
+            }
           } else {
             console.error(
               'An error occurred while processing your request. Please try again later.'
@@ -205,9 +211,13 @@ export class UserProfileComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (response && this.userData !== undefined) {
+            // Check what the follow status was before unfollowing. If they were accepted (not pending) then
+            // decrement the follower count
+            if (this.userData.follow_status == 'accepted') {
+              this.userData.num_followers -= 1;
+            }
             // update the follow status property in the userData state
             this.userData.follow_status = response.follow_status;
-            this.userData.num_followers -= 1;
           } else {
             console.error(
               'An error occurred while processing your request. Please try again later.'
