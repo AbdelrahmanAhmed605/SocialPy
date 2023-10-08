@@ -62,8 +62,18 @@ export class FollowService {
   }
 
   // Get a paginated list (using page parameter) of users that follow the specified user (userId)
-  getUsersFollowers(userId: number, page: number): Observable<any> {
-    const userFollowersEndpoint = `follower_list/${userId}/?page=${page}`; // create the api endpoint
+  // apply an optional username parameter to filter the results if provided
+  getUsersFollowers(
+    userId: number,
+    page: number,
+    username?: string
+  ): Observable<any> {
+    let userFollowersEndpoint = `follower_list/${userId}/?page=${page}`; // create the api endpoint
+
+    // Append the username query parameter to the api endpoint if provided
+    if (username) {
+      userFollowersEndpoint += `&username=${encodeURIComponent(username)}`;
+    }
 
     return this.authService.handleAuthenticationToken().pipe(
       switchMap((token) => {
@@ -86,8 +96,18 @@ export class FollowService {
   }
 
   // Get a paginated list (using page parameter) of users that the specified user (userId) is following
-  getUsersFollowing(userId: number, page: number): Observable<any> {
-    const userFollowingEndpoint = `following_list/${userId}/?page=${page}`; // create the api endpoint
+  // apply an optional username parameter to filter the results if provided
+  getUsersFollowing(
+    userId: number,
+    page: number,
+    username?: string
+  ): Observable<any> {
+    let userFollowingEndpoint = `following_list/${userId}/?page=${page}`; // create the api endpoint
+
+    // Append the username query parameter to the api endpoint if provided
+    if (username) {
+      userFollowingEndpoint += `&username=${encodeURIComponent(username)}`;
+    }
 
     return this.authService.handleAuthenticationToken().pipe(
       switchMap((token) => {
