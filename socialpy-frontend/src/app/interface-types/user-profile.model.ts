@@ -14,6 +14,8 @@ export interface UserProfileResponse {
   }>;
   profile_picture: string | null;
   username: string;
+  first_name: string | null;
+  last_name: string | null;
   pagination: {
     next: string | null;
     previous: string | null;
