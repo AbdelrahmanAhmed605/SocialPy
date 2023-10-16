@@ -118,7 +118,7 @@
                 <!-- User Posts -->
                 <div *ngIf="userData.posts.length > 0; else noPosts" class="user-posts-container">
                     <ng-container *ngFor="let post of userData.posts">
-                        <div class="single-post-container">
+                        <div class="single-post-container" (click)="openSinglePostModal(post.id)">
                             <div class="post-overlay-content">
                                 <p><fa-icon [icon]="faHeart"></fa-icon> {{ post.like_count }}</p>
                                 <p><fa-icon [icon]="faComment"></fa-icon> {{ post.comment_count }}</p>

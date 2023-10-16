@@ -16,6 +16,7 @@ import { FollowService } from 'src/app/api-services/follow/follow.service';
 import { UserProfileResponse } from 'src/app/interface-types/user-profile.model';
 
 import { UserConnectionsModalComponent } from '../user-connections-modal/user-connections-modal.component';
+import { SinglePostModalComponent } from '../single-post-modal/single-post-modal.component';
 
 import {
   faUser,
@@ -273,6 +274,18 @@ export class UserProfileComponent implements OnInit, OnDestroy {
 
     // Create the modal and present it
     const modal = await this.modalCtrl.create(modalOptions);
+    modal.present();
+  }
+
+  // Function to create the modal to display the view for the specified post
+  async openSinglePostModal(postId: number) {
+    const modal = await this.modalCtrl.create({
+      component: SinglePostModalComponent,
+      componentProps: {
+        postId: postId, // Pass the postId to the modal component
+      },
+    });
+
     modal.present();
   }
 

@@ -31,6 +31,7 @@ import { LoadingPageComponent } from './components/loading-page/loading-page.com
 import { PostLikersModalComponent } from './components/post-likers-modal/post-likers-modal.component';
 import { PostCommentsModalComponent } from './components/post-comments-modal/post-comments-modal.component';
 import { UserConnectionsModalComponent } from './components/user-connections-modal/user-connections-modal.component';
+import { SinglePostModalComponent } from './components/single-post-modal/single-post-modal.component';
 
 import { UserFeedEffects } from './store/user-feed/user-feed.effects';
 import { PostActionsEffects } from './store/post-actions/post-actions.effects';
@@ -48,6 +49,7 @@ import { AppThemeEffects } from './store/app-theme/app-theme.effects';
     PostLikersModalComponent,
     PostCommentsModalComponent,
     UserConnectionsModalComponent,
+    SinglePostModalComponent,
   ],
   imports: [
     HttpClientModule,
